@@ -289,8 +289,8 @@ fn rewrite_id(
 }
 
 fn enum_to_type_object(e: &XmlEnum) -> DdsResult<CompleteTypeObject> {
-    let mut enum_type =
-        CompleteEnumeratedType::new(TypeFlag::default(), e.name.clone(), e.bit_bound);
+    let flags = e.extensibility.map_or_else(TypeFlag::default, |k| TypeFlag::new(k, false, false));
+    let mut enum_type = CompleteEnumeratedType::new(flags, e.name.clone(), e.bit_bound);
     let values = enum_literal_values(e)?;
     for (lit, value) in e.literals.iter().zip(values) {
         let flags = if lit.is_default {
@@ -306,7 +306,14 @@ fn enum_to_type_object(e: &XmlEnum) -> DdsResult<CompleteTypeObject> {
 fn union_to_type_object(u: &XmlUnion) -> DdsResult<CompleteTypeObject> {
     let mut union_type = CompleteUnionType::new(
         TypeFlag::new(u.extensibility, false, false),
-        MemberFlag::default(),
+        MemberFlag::new(
+            u.discriminator_try_construct,
+            false,
+            false,
+            false,
+            u.discriminator_key,
+            false,
+        ),
         member_type_id(&u.discriminator),
         u.name.clone(),
     );
