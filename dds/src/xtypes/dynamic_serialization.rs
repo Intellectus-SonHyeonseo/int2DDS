@@ -34,6 +34,7 @@ trait ValueDeserializer {
     fn deserialize_u64(&mut self) -> Result<u64, CdrError>;
     fn deserialize_f32(&mut self) -> Result<f32, CdrError>;
     fn deserialize_f64(&mut self) -> Result<f64, CdrError>;
+    fn deserialize_f128(&mut self) -> Result<f64, CdrError>;
     fn deserialize_string(&mut self) -> Result<String, CdrError>;
     fn deserialize_wstring16(&mut self) -> Result<String, CdrError>;
 }
@@ -81,6 +82,10 @@ impl ValueDeserializer for CdrDeserializer<'_> {
 
     fn deserialize_f64(&mut self) -> Result<f64, CdrError> {
         CdrDeserializer::deserialize_f64(self)
+    }
+
+    fn deserialize_f128(&mut self) -> Result<f64, CdrError> {
+        CdrDeserializer::deserialize_f128(self)
     }
 
     fn deserialize_string(&mut self) -> Result<String, CdrError> {
@@ -135,6 +140,10 @@ impl ValueDeserializer for Xcdr2Deserializer<'_> {
 
     fn deserialize_f64(&mut self) -> Result<f64, CdrError> {
         Xcdr2Deserializer::deserialize_f64(self)
+    }
+
+    fn deserialize_f128(&mut self) -> Result<f64, CdrError> {
+        Xcdr2Deserializer::deserialize_f128(self)
     }
 
     fn deserialize_string(&mut self) -> Result<String, CdrError> {
@@ -381,8 +390,18 @@ where
         DynamicValue::Uint32(v) => serializer.serialize_u32(*v).map_err(cdr_error),
         DynamicValue::Uint64(v) => serializer.serialize_u64(*v).map_err(cdr_error),
         DynamicValue::Float32(v) => serializer.serialize_f32(*v).map_err(cdr_error),
-        DynamicValue::Float64(v) => serializer.serialize_f64(*v).map_err(cdr_error),
-        DynamicValue::Char8(v) => serializer.serialize_u8(*v as u8).map_err(cdr_error),
+        DynamicValue::Float64(v) => match resolved_kind(type_kind) {
+            DynamicTypeKind::Primitive(PrimitiveKind::Float128) => {
+                serializer.serialize_f128(*v).map_err(cdr_error)
+            }
+            _ => serializer.serialize_f64(*v).map_err(cdr_error),
+        },
+        DynamicValue::Char8(v) => match resolved_kind(type_kind) {
+            DynamicTypeKind::Primitive(PrimitiveKind::Char16) => {
+                serializer.serialize_u16(*v as u32 as u16).map_err(cdr_error)
+            }
+            _ => serializer.serialize_u8(*v as u8).map_err(cdr_error),
+        },
         DynamicValue::Byte(v) => serializer.serialize_u8(*v).map_err(cdr_error),
         DynamicValue::String(v) => serializer.serialize_string(v).map_err(cdr_error),
         DynamicValue::WString(v) => serializer.serialize_wstring16(v).map_err(cdr_error),
@@ -861,14 +880,15 @@ where
             Ok(DynamicValue::Float64(deserializer.deserialize_f64().map_err(cdr_error)?))
         }
         PrimitiveKind::Float128 => {
-            Ok(DynamicValue::Float64(deserializer.deserialize_f64().map_err(cdr_error)?))
+            Ok(DynamicValue::Float64(deserializer.deserialize_f128().map_err(cdr_error)?))
         }
         PrimitiveKind::Char8 => {
             Ok(DynamicValue::Char8(deserializer.deserialize_u8().map_err(cdr_error)? as char))
         }
-        PrimitiveKind::Char16 => Ok(DynamicValue::Char8(
-            deserializer.deserialize_u16().map_err(cdr_error)? as u8 as char,
-        )),
+        PrimitiveKind::Char16 => {
+            let unit = deserializer.deserialize_u16().map_err(cdr_error)?;
+            Ok(DynamicValue::Char8(char::from_u32(unit as u32).unwrap_or('\u{FFFD}')))
+        }
         PrimitiveKind::Byte => {
             Ok(DynamicValue::Byte(deserializer.deserialize_u8().map_err(cdr_error)?))
         }
