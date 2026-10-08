@@ -5,7 +5,7 @@
 //! participants to enable reader-writer matching.
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex, Weak},
     thread::{self, JoinHandle},
     time::{Duration as StdDuration, Instant},
@@ -143,6 +143,9 @@ pub(crate) struct SedpLogic {
     pub(crate) type_lookup_pending:
         Arc<Mutex<HashMap<SampleIdentity, (GuidPrefix, TypeIdentifier)>>>,
     deferred_type_matches: Arc<Mutex<HashMap<Guid, Instant>>>,
+    /// (writer, reader) pairs already reported as type-inconsistent; re-matching must not
+    /// count them again.
+    reported_type_rejections: Arc<Mutex<HashSet<(Guid, Guid)>>>,
     /// Heartbeats sent per (remote, builtin writer) since it was armed.
     sedp_hb_attempts: Arc<dashmap::DashMap<(GuidPrefix, EntityId), u32>>,
 }
@@ -164,7 +167,9 @@ impl SedpLogic {
         let writer_keyed = offered.endpoint_guid().entity_kind().is_with_key();
         let reader_keyed = requested.endpoint_guid().entity_kind().is_with_key();
         if writer_keyed != reader_keyed {
-            update_inconsistent_topic(local);
+            if self.first_type_rejection(offered.endpoint_guid(), requested.endpoint_guid()) {
+                update_inconsistent_topic(local);
+            }
             debug!(
                 "[{}] TopicKind mismatch: writer keyed={}, reader keyed={}",
                 who, writer_keyed, reader_keyed
@@ -197,7 +202,8 @@ impl SedpLogic {
             ));
         }
 
-        // Type Compatibility (DDS-XTypes): resolve via registry, defer if unknown.
+        // Type Compatibility (DDS-XTypes 7.6.3.4.2): resolve via registry, defer if unknown.
+        // A failed check is an inconsistent topic on this side; both sides evaluate on their own.
         match self.evaluate_type_match(offered, requested, remote_guid) {
             MatchDecision::Reject(e) => {
                 debug!(
@@ -206,10 +212,29 @@ impl SedpLogic {
                     offered.type_identifier(),
                     requested.type_identifier()
                 );
-                update_incompatible_type(local);
+                if self.first_type_rejection(offered.endpoint_guid(), requested.endpoint_guid()) {
+                    update_incompatible_type(local);
+                    update_inconsistent_topic(local);
+                }
                 MatchDecision::Reject(e)
             }
             decision => decision,
+        }
+    }
+
+    /// True on the first rejection of a (writer, reader) pair. Re-matching after a TypeLookup
+    /// reply or the deferred-match timer evaluates the pair again and must not report twice.
+    fn first_type_rejection(&self, writer_guid: Guid, reader_guid: Guid) -> bool {
+        self.reported_type_rejections
+            .lock()
+            .map(|mut set| set.insert((writer_guid, reader_guid)))
+            .unwrap_or(true)
+    }
+
+    /// Drop the rejection records of an endpoint that is gone.
+    pub(crate) fn forget_type_rejections(&self, endpoint_guid: Guid) {
+        if let Ok(mut set) = self.reported_type_rejections.lock() {
+            set.retain(|(w, r)| *w != endpoint_guid && *r != endpoint_guid);
         }
     }
 
@@ -222,6 +247,15 @@ impl SedpLogic {
         let w_id = offered.type_identifier();
         let r_id = requested.type_identifier();
         let tce = requested.type_consistency_enforcement();
+        let names_equal = offered.type_name() == requested.type_name();
+
+        // Without TypeInformation on both sides the type names decide.
+        if (w_id.is_none() || r_id.is_none()) && !names_equal {
+            return MatchDecision::Reject(RtpsError::new(
+                RtpsErrorCode::QosIncompatible,
+                "[Type name mismatch]",
+            ));
+        }
 
         let participant = match self.get_upgraded_participant() {
             Ok(p) => p,
@@ -245,20 +279,25 @@ impl SedpLogic {
                 self.clear_deferred(remote_guid);
                 MatchDecision::Match
             }
-            TypeCompatibility::Incompatible(_) => {
+            TypeCompatibility::Incompatible(e) => {
                 self.clear_deferred(remote_guid);
                 MatchDecision::Reject(RtpsError::new(
                     RtpsErrorCode::QosIncompatible,
-                    "[Type compatibility failed]",
+                    format!("[Type compatibility failed: {e}]"),
                 ))
             }
             TypeCompatibility::Indeterminate => {
-                self.decide_deferred(remote_guid, tce.force_type_validation)
+                self.decide_deferred(remote_guid, tce.force_type_validation, names_equal)
             }
         }
     }
 
-    fn decide_deferred(&self, remote_guid: Guid, force_validation: bool) -> MatchDecision {
+    fn decide_deferred(
+        &self,
+        remote_guid: Guid,
+        force_validation: bool,
+        names_equal: bool,
+    ) -> MatchDecision {
         let now = Instant::now();
         let mut map = match self.deferred_type_matches.lock() {
             Ok(m) => m,
@@ -271,10 +310,16 @@ impl SedpLogic {
                 }
                 map.remove(&remote_guid);
                 drop(map);
+                // The TypeObject never arrived: fall back to the type-name rule.
                 if force_validation {
                     MatchDecision::Reject(RtpsError::new(
                         RtpsErrorCode::QosIncompatible,
                         "[Type resolution timed out with force_type_validation]",
+                    ))
+                } else if !names_equal {
+                    MatchDecision::Reject(RtpsError::new(
+                        RtpsErrorCode::QosIncompatible,
+                        "[Type resolution timed out with different type names]",
                     ))
                 } else {
                     MatchDecision::Match
@@ -401,6 +446,7 @@ impl SedpLogic {
             timer_handler,
             type_lookup_pending: Arc::new(Mutex::new(HashMap::new())),
             deferred_type_matches: Arc::new(Mutex::new(HashMap::new())),
+            reported_type_rejections: Arc::new(Mutex::new(HashSet::new())),
             sedp_hb_attempts: Arc::new(dashmap::DashMap::new()),
         }
     }
