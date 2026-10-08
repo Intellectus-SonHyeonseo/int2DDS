@@ -181,6 +181,41 @@ fn external_type_deserialization_error(type_kind: &DynamicTypeKind) -> DdsError 
     DdsError::Error(format!("External type deserialization is not supported yet: {:?}", type_kind))
 }
 
+/// Field holding the discriminator of a `DynamicData` whose type is a union; the
+/// selected branch is stored under its member name.
+pub const UNION_DISCRIMINATOR_FIELD: &str = "discriminator";
+
+/// Discriminator and selected branch value of a union-typed `DynamicData`.
+fn union_parts(
+    data: &DynamicData,
+    union_desc: &UnionDescriptor,
+) -> DdsResult<(DynamicValue, DynamicValue)> {
+    let discriminator = data
+        .get_value(UNION_DISCRIMINATOR_FIELD)
+        .cloned()
+        .ok_or_else(|| DdsError::Error("union discriminator not set".to_string()))?;
+    let member = select_union_member(union_desc, discriminator_as_i64(&discriminator)?)?;
+    let value = data
+        .get_value(&member.name)
+        .cloned()
+        .unwrap_or_else(|| DynamicValue::default_for_kind(&member.member_type));
+    Ok((discriminator, value))
+}
+
+fn union_values(
+    union_desc: &UnionDescriptor,
+    value: DynamicValue,
+) -> DdsResult<HashMap<Arc<str>, DynamicValue>> {
+    let DynamicValue::Union { discriminator, value } = value else {
+        return Err(DdsError::Error("type mismatch: expected Union".to_string()));
+    };
+    let member = select_union_member(union_desc, discriminator_as_i64(&discriminator)?)?;
+    let mut values = HashMap::new();
+    values.insert(Arc::from(UNION_DISCRIMINATOR_FIELD), *discriminator);
+    values.insert(member.name.clone(), *value);
+    Ok(values)
+}
+
 fn member_value_or_default<'a>(
     data: &'a DynamicData,
     member: &MemberDescriptor,
@@ -1025,11 +1060,16 @@ fn deserialize_cdr(bytes: &[u8], dynamic_type: &Arc<DynamicType>) -> DdsResult<D
 
 fn serialize_struct_cdr(serializer: &mut CdrSerializer, data: &DynamicData) -> DdsResult<()> {
     let dynamic_type = data.dynamic_type();
+    let mut nested = serialize_struct_cdr;
+    if let Some(union_desc) = dynamic_type.as_union() {
+        let (discriminator, value) = union_parts(data, union_desc)?;
+        let value =
+            DynamicValue::Union { discriminator: Box::new(discriminator), value: Box::new(value) };
+        return serialize_value_cdr(serializer, &value, dynamic_type.kind(), &mut nested);
+    }
     let struct_desc = dynamic_type
         .as_struct()
         .ok_or_else(|| DdsError::Error("Expected struct type".to_string()))?;
-
-    let mut nested = serialize_struct_cdr;
 
     if matches!(dynamic_type.extensibility(), ExtensibilityKind::Mutable) {
         for member in struct_desc.members() {
@@ -1075,6 +1115,11 @@ fn deserialize_struct_cdr(
     deserializer: &mut CdrDeserializer,
     dynamic_type: &Arc<DynamicType>,
 ) -> DdsResult<DynamicData> {
+    if let Some(union_desc) = dynamic_type.as_union() {
+        let value = deserialize_union_cdr(deserializer, union_desc)?;
+        let values = union_values(union_desc, value)?;
+        return Ok(DynamicData::with_values(dynamic_type.clone(), values));
+    }
     let struct_desc = dynamic_type
         .as_struct()
         .ok_or_else(|| DdsError::Error("Expected struct type".to_string()))?;
@@ -1398,12 +1443,22 @@ where
 
 fn serialize_struct_xcdr(serializer: &mut Xcdr2Serializer, data: &DynamicData) -> DdsResult<()> {
     let extensibility = data.dynamic_type().extensibility();
+    let mut nested = serialize_struct_xcdr;
+    if let Some(union_desc) = data.dynamic_type().as_union() {
+        let (discriminator, value) = union_parts(data, union_desc)?;
+        return serialize_union_xcdr2(
+            serializer,
+            &discriminator,
+            &value,
+            union_desc,
+            extensibility,
+            &mut nested,
+        );
+    }
     let struct_desc = data
         .dynamic_type()
         .as_struct()
         .ok_or_else(|| DdsError::Error("Expected struct type".to_string()))?;
-
-    let mut nested = serialize_struct_xcdr;
 
     match extensibility {
         ExtensibilityKind::Final => {
@@ -1443,6 +1498,11 @@ fn deserialize_struct_xcdr(
     dynamic_type: &Arc<DynamicType>,
 ) -> DdsResult<DynamicData> {
     let extensibility = dynamic_type.extensibility();
+    if let Some(union_desc) = dynamic_type.as_union() {
+        let value = deserialize_union_xcdr2(deserializer, union_desc, extensibility)?;
+        let values = union_values(union_desc, value)?;
+        return Ok(DynamicData::with_values(dynamic_type.clone(), values));
+    }
     let struct_desc = dynamic_type
         .as_struct()
         .ok_or_else(|| DdsError::Error("Expected struct type".to_string()))?;
