@@ -356,16 +356,16 @@ public final class CdrWriter implements AutoCloseable {
     }
 
     /**
-     * Writes a CDR wstring: a uint32 count of UTF-16 code units, then each unit as a u16. Unlike
-     * {@link #writeString}, there is no terminator and the count does not include one -- {@code
-     * String.length()} is already the UTF-16 unit count, so a surrogate pair contributes two.
+     * Writes a CDR wstring: a uint32 length in bytes (XTypes 1.3 7.4.1.1.2), then each UTF-16
+     * unit as a u16. Unlike {@link #writeString}, there is no terminator -- {@code
+     * String.length()} is the UTF-16 unit count, so a surrogate pair contributes four bytes.
      */
     public void writeWString(String s) {
         if (s == null) {
             s = "";
         }
         int n = s.length();
-        writeU32(n);
+        writeU32(2 * n);
         for (int i = 0; i < n; i++) {
             writeU16(s.charAt(i));
         }

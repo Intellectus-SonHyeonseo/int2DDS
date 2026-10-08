@@ -997,7 +997,7 @@ impl<'a> CGen<'a> {
                     "{}while (_wlen < {} && {}[_wlen]) _wlen++;\n",
                     indent, len, accessor
                 ));
-                self.raw(&format!("{}int2dds_cdr_write_u32(&w, _wlen);\n", indent));
+                self.raw(&format!("{}int2dds_cdr_write_u32(&w, _wlen * 2);\n", indent));
                 self.raw(&format!("{}for (uint32_t _wi = 0; _wi < _wlen; _wi++) int2dds_cdr_write_u16(&w, {}[_wi]);\n", indent, accessor));
                 self.raw(&format!("{}}}\n", indent));
             }
@@ -1295,6 +1295,7 @@ impl<'a> CGen<'a> {
                 let max_len = bound.unwrap_or(self.opts.default_string_bound);
                 self.raw(&format!("{}{{ uint32_t _wlen;\n", indent));
                 self.raw(&format!("{}int2dds_cdr_read_u32(&r, &_wlen);\n", indent));
+                self.raw(&format!("{}_wlen /= 2;\n", indent));
                 self.raw(&format!("{}if (_wlen > {}) _wlen = {};\n", indent, max_len, max_len));
                 self.raw(&format!("{}for (uint32_t _wi = 0; _wi < _wlen; _wi++) int2dds_cdr_read_u16(&r, &{}[_wi]);\n", indent, accessor));
                 self.raw(&format!("{}{}[_wlen] = 0;\n", indent, accessor));

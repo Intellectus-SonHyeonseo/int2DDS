@@ -209,15 +209,11 @@ class CdrWriter:
         """
         Write a wide string (UTF-16) with length prefix.
 
-        Length is the number of UTF-16 code units (NOT bytes, NOT including null).
-        No null terminator is written.
+        Length is the number of bytes (XTypes 1.3 7.4.1.1.2). No null terminator.
         """
-        # Encode as UTF-16 without BOM
         encoding = "utf-16-le" if self._le else "utf-16-be"
         encoded = val.encode(encoding)
-        # Number of UTF-16 code units = bytes / 2
-        code_units = len(encoded) // 2
-        self.write_u32(code_units)
+        self.write_u32(len(encoded))
         self._align(2)
         self._buf.extend(encoded)
 

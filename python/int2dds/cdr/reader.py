@@ -288,15 +288,13 @@ class CdrReader:
         """
         Read a length-prefixed wide string (UTF-16).
 
-        Length is the number of UTF-16 code units (NOT bytes, NOT including null).
-        No null terminator is read.
+        Length is the number of bytes (XTypes 1.3 7.4.1.1.2). No null terminator.
         """
-        code_units = self.read_u32()
-        if code_units == 0:
+        byte_count = self.read_u32() & ~1
+        if byte_count == 0:
             return ""
 
         self._align(2)
-        byte_count = code_units * 2
         self._ensure(byte_count)
         data = bytes(self._buf[self._pos : self._pos + byte_count])
         self._pos += byte_count
