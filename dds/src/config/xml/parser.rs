@@ -377,7 +377,14 @@ fn parse_union_case(doc: &Document, node: Node, cx: Cx, lenient: bool) -> DdsRes
     if labels.is_empty() && !is_default {
         return Err(err_at(doc, node, "union case requires a <caseDiscriminator>"));
     }
-    Ok(XmlUnionCase { name: member.name, ty: member.ty, labels, is_default })
+    Ok(XmlUnionCase {
+        name: member.name,
+        ty: member.ty,
+        id: member.id,
+        try_construct: member.try_construct,
+        labels,
+        is_default,
+    })
 }
 
 fn is_valid_discriminator(ty: &XmlMemberType) -> bool {

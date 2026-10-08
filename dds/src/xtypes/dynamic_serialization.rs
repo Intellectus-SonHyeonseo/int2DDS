@@ -613,7 +613,7 @@ where
         }
         ExtensibilityKind::Mutable => {
             let size_pos = serializer.begin_struct().map_err(cdr_error)?;
-            let branch_id = member.index as u32 + 1;
+            let branch_id = member.member_id;
             let member_type = member.member_type.clone();
             serializer
                 .write_member_with(0, false, |s| {

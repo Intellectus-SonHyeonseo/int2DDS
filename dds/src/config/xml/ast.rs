@@ -77,6 +77,8 @@ pub(crate) struct XmlUnion {
 pub(crate) struct XmlUnionCase {
     pub(crate) name: String,
     pub(crate) ty: XmlMemberType,
+    pub(crate) id: Option<u32>,
+    pub(crate) try_construct: TryConstructKind,
     pub(crate) labels: Vec<XmlCaseLabel>,
     pub(crate) is_default: bool,
 }

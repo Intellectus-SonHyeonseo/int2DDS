@@ -823,7 +823,7 @@ pub struct UnionMemberDescriptor {
     pub is_default: bool,
     /// Whether this member must be understood
     pub is_must_understand: bool,
-    /// Index in the member sequence (branch id is `index + 1`)
+    /// Index in the member sequence
     pub index: usize,
 }
 
