@@ -185,19 +185,11 @@ fn member_value_or_default<'a>(
     }
 }
 
+/// XTypes primitive kinds only; enum/bitmask/bitset elements make a collection delimited.
 fn is_primitive_kind(kind: &DynamicTypeKind) -> bool {
-    fn is_scalar(kind: &DynamicTypeKind) -> bool {
-        matches!(
-            kind,
-            DynamicTypeKind::Primitive(_)
-                | DynamicTypeKind::Enum(_)
-                | DynamicTypeKind::Bitmask(_)
-                | DynamicTypeKind::Bitset(_)
-        )
-    }
     match kind {
-        DynamicTypeKind::TypeRef(inner) => is_scalar(inner.kind()),
-        other => is_scalar(other),
+        DynamicTypeKind::TypeRef(inner) => is_primitive_kind(inner.kind()),
+        other => matches!(other, DynamicTypeKind::Primitive(_)),
     }
 }
 
@@ -518,21 +510,27 @@ where
                 DynamicTypeKind::Sequence { element_type, .. } => element_type.as_ref(),
                 _ => return Err(DdsError::Error("type mismatch: expected Sequence".to_string())),
             };
-            serializer.serialize_u32(items.len() as u32).map_err(cdr_error)?;
-            for item in items {
-                serialize_value_xcdr2(serializer, item, element_type, serialize_nested_struct)?;
-            }
-            Ok(())
+            let write_inner = |s: &mut Xcdr2Serializer| -> DdsResult<()> {
+                s.serialize_u32(items.len() as u32).map_err(cdr_error)?;
+                for item in items {
+                    serialize_value_xcdr2(s, item, element_type, serialize_nested_struct)?;
+                }
+                Ok(())
+            };
+            write_collection_framed(serializer, !is_primitive_kind(element_type), write_inner)
         }
         DynamicValue::Array(items) => {
             let element_type = match type_kind {
                 DynamicTypeKind::Array { element_type, .. } => element_type.as_ref(),
                 _ => return Err(DdsError::Error("type mismatch: expected Array".to_string())),
             };
-            for item in items {
-                serialize_value_xcdr2(serializer, item, element_type, serialize_nested_struct)?;
-            }
-            Ok(())
+            let write_inner = |s: &mut Xcdr2Serializer| -> DdsResult<()> {
+                for item in items {
+                    serialize_value_xcdr2(s, item, element_type, serialize_nested_struct)?;
+                }
+                Ok(())
+            };
+            write_collection_framed(serializer, !is_primitive_kind(element_type), write_inner)
         }
         DynamicValue::Optional(Some(inner)) => {
             serializer.serialize_bool(true).map_err(cdr_error)?;
@@ -721,6 +719,9 @@ fn deserialize_value_xcdr2(
 ) -> DdsResult<DynamicValue> {
     match type_kind {
         DynamicTypeKind::Sequence { element_type, .. } => {
+            if !is_primitive_kind(element_type) {
+                deserializer.read_dheader().map_err(cdr_error)?;
+            }
             let len = deserializer.deserialize_u32().map_err(cdr_error)? as usize;
             let mut items = Vec::new();
             for _ in 0..len {
@@ -729,6 +730,9 @@ fn deserialize_value_xcdr2(
             Ok(DynamicValue::Sequence(items))
         }
         DynamicTypeKind::Array { element_type, dimensions } => {
+            if !is_primitive_kind(element_type) {
+                deserializer.read_dheader().map_err(cdr_error)?;
+            }
             let total_size = checked_array_len(dimensions)?;
             let mut items = Vec::new();
             for _ in 0..total_size {
@@ -1211,9 +1215,12 @@ fn deserialize_key_holder_value(
             return Ok(DynamicValue::Struct(Box::new(nested)));
         }
     }
-    // A fixed array projects element-wise (FINAL, no framing), recursing into
-    // struct elements as their own key holders.
+    // A fixed array projects element-wise, recursing into struct elements as
+    // their own (FINAL) key holders; the collection DHEADER itself stays.
     if let DynamicTypeKind::Array { element_type, dimensions } = kind {
+        if !is_primitive_kind(element_type) {
+            deserializer.read_dheader().map_err(cdr_error)?;
+        }
         let count = checked_array_len(dimensions)?;
         let mut items = Vec::with_capacity(count as usize);
         for _ in 0..count {
@@ -1275,27 +1282,39 @@ fn type_kind_max_size(kind: &DynamicTypeKind) -> Option<(usize, usize)> {
             };
             Some((4, size))
         }
-        // Fixed array of finite-size elements: `N` packed (max-align-4) elements.
+        // Fixed array of finite-size elements: `N` packed (max-align-4) elements,
+        // behind a DHEADER when the element is non-primitive.
         DynamicTypeKind::Array { element_type, dimensions } => {
             let (elem_align, elem_size) = type_kind_max_size(element_type)?;
             let count: usize = dimensions.iter().map(|d| *d as usize).product();
-            if count == 0 {
-                return Some((elem_align, 0));
+            if is_primitive_kind(element_type) {
+                if count == 0 {
+                    return Some((elem_align, 0));
+                }
+                let stride = align_up(elem_size, elem_align);
+                let size = stride.checked_mul(count - 1)?.checked_add(elem_size)?;
+                return Some((elem_align, size));
             }
-            let stride = align_up(elem_size, elem_align);
-            let size = stride.checked_mul(count - 1)?.checked_add(elem_size)?;
-            Some((elem_align, size))
-        }
-        // Bounded sequence: `u32` length prefix (align 4) then up to `bound` packed
-        // (max-align-4) elements. Unbounded elements collapse the whole holder to MD5.
-        DynamicTypeKind::Sequence { element_type, bound: Some(n) } => {
-            let (elem_align, elem_size) = type_kind_max_size(element_type)?;
-            let n = *n as usize;
-            let size = if n == 0 {
+            let size = if count == 0 {
                 4
             } else {
                 let stride = align_up(elem_size, elem_align);
-                4usize.checked_add(stride.checked_mul(n - 1)?)?.checked_add(elem_size)?
+                4usize.checked_add(stride.checked_mul(count - 1)?)?.checked_add(elem_size)?
+            };
+            Some((4, size))
+        }
+        // Bounded sequence: `u32` length prefix (align 4) then up to `bound` packed
+        // (max-align-4) elements, behind a DHEADER when the element is non-primitive.
+        // Unbounded elements collapse the whole holder to MD5.
+        DynamicTypeKind::Sequence { element_type, bound: Some(n) } => {
+            let (elem_align, elem_size) = type_kind_max_size(element_type)?;
+            let n = *n as usize;
+            let header: usize = if is_primitive_kind(element_type) { 4 } else { 8 };
+            let size = if n == 0 {
+                header
+            } else {
+                let stride = align_up(elem_size, elem_align);
+                header.checked_add(stride.checked_mul(n - 1)?)?.checked_add(elem_size)?
             };
             Some((4, size))
         }
@@ -1849,7 +1868,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nested_enum_name_resolution_and_vec_enum_has_no_dheader() {
+    fn test_nested_enum_name_resolution_and_vec_enum_has_dheader() {
         let (enum_obj, enum_hash) = color_enum();
         let mut registry = TypeRegistry::new();
         registry.register_complete(enum_hash, "Color".into(), enum_obj);
@@ -1887,7 +1906,9 @@ mod tests {
         .unwrap();
 
         let bytes = serialize_dynamic_data(&data, &xcdr_format(ExtensibilityKind::Final)).unwrap();
-        assert_eq!(bytes.len(), 20, "Vec<enum> should not have a collection DHEADER");
+        // Enums are not primitives, so sequence<Color> carries a 4-byte DHEADER.
+        assert_eq!(bytes.len(), 24, "Vec<enum> must carry a collection DHEADER");
+        assert_eq!(&bytes[8..12], &12u32.to_le_bytes(), "DHEADER = length + 2 x u32");
 
         let back = deserialize_dynamic_data(&bytes, &outer_dt).unwrap();
         match back.get_value("color").unwrap() {

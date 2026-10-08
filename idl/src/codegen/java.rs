@@ -375,9 +375,69 @@ fn is_byte(t: &ResolvedType) -> bool {
     matches!(t, ResolvedType::U8 | ResolvedType::UInt8)
 }
 
+/// XTypes primitive types. XCDR2 frames a sequence or array of any other
+/// element type with a DHEADER (DDS-XTypes 1.3 7.4.3.5.3); the runtime
+/// helpers are no-ops under XCDR1.
+fn is_primitive(t: &ResolvedType) -> bool {
+    matches!(
+        t,
+        ResolvedType::Bool
+            | ResolvedType::U8
+            | ResolvedType::UInt8
+            | ResolvedType::I8
+            | ResolvedType::I16
+            | ResolvedType::U16
+            | ResolvedType::I32
+            | ResolvedType::U32
+            | ResolvedType::I64
+            | ResolvedType::U64
+            | ResolvedType::F32
+            | ResolvedType::F64
+            | ResolvedType::Char
+            | ResolvedType::WChar
+    )
+}
+
 /// The `this.`-less form of a field expression, for exception text only.
 fn display_expr(expr: &str) -> &str {
     expr.strip_prefix("this.").unwrap_or(expr)
+}
+
+/// Opens the DHEADER block around a collection of `element` and returns the
+/// indentation of its body. A primitive element gets no block: the body stays
+/// at `ind`. Each collection scopes its own `dh` local so several in one
+/// method do not redeclare it.
+fn write_dheader_begin(out: &mut String, ind: &str, element: &ResolvedType) -> String {
+    if is_primitive(element) {
+        return ind.to_string();
+    }
+    out.push_str(&format!("{ind}{{\n{ind}    int dh = writer.dheaderBegin();\n", ind = ind));
+    format!("{}    ", ind)
+}
+
+fn write_dheader_end(out: &mut String, ind: &str, element: &ResolvedType) {
+    if is_primitive(element) {
+        return;
+    }
+    out.push_str(&format!("{ind}    writer.dheaderFinalize(dh);\n{ind}}}\n", ind = ind));
+}
+
+fn read_dheader_begin(out: &mut String, ind: &str, element: &ResolvedType) -> String {
+    if is_primitive(element) {
+        return ind.to_string();
+    }
+    out.push_str(&format!(
+        "{ind}{{\n{ind}    CdrReader.Dheader dh = reader.readDheader();\n",
+        ind = ind
+    ));
+    format!("{}    ", ind)
+}
+
+fn read_dheader_end(out: &mut String, ind: &str, element: &ResolvedType) {
+    if is_primitive(element) {
+        return;
+    }
+    out.push_str(&format!("{ind}    reader.readDheaderEnd(dh);\n{ind}}}\n", ind = ind));
 }
 
 /// Emits the statement that writes `expr` (a Java expression of `t`'s type).
@@ -402,21 +462,23 @@ fn emit_write(
                     b = b
                 ));
             }
-            out.push_str(&format!("{}writer.writeSeqHeader({}.length);\n", ind, expr));
+            let body = &write_dheader_begin(out, ind, element);
+            out.push_str(&format!("{}writer.writeSeqHeader({}.length);\n", body, expr));
             if is_byte(element) {
-                out.push_str(&format!("{}writer.writeBytes({});\n", ind, expr));
+                out.push_str(&format!("{}writer.writeBytes({});\n", body, expr));
             } else {
                 let i = format!("i{}", depth);
                 out.push_str(&format!(
                     "{ind}for (int {i} = 0; {i} < {expr}.length; {i}++) {{\n",
-                    ind = ind,
+                    ind = body,
                     i = i,
                     expr = expr
                 ));
-                let inner = format!("{}    ", ind);
+                let inner = format!("{}    ", body);
                 emit_write(out, &inner, &format!("{}[{}]", expr, i), element, depth + 1)?;
-                out.push_str(&format!("{}}}\n", ind));
+                out.push_str(&format!("{}}}\n", body));
             }
+            write_dheader_end(out, ind, element);
             return Ok(());
         }
         ResolvedType::Array { element, size } => {
@@ -430,16 +492,18 @@ fn emit_write(
                 name = display_expr(expr),
                 size = size
             ));
+            let body = &write_dheader_begin(out, ind, element);
             let i = format!("i{}", depth);
             out.push_str(&format!(
                 "{ind}for (int {i} = 0; {i} < {size}; {i}++) {{\n",
-                ind = ind,
+                ind = body,
                 i = i,
                 size = size
             ));
-            let inner = format!("{}    ", ind);
+            let inner = format!("{}    ", body);
             emit_write(out, &inner, &format!("{}[{}]", expr, i), element, depth + 1)?;
-            out.push_str(&format!("{}}}\n", ind));
+            out.push_str(&format!("{}}}\n", body));
+            write_dheader_end(out, ind, element);
             return Ok(());
         }
         _ => {}
@@ -515,41 +579,45 @@ fn emit_read(
 ) -> Result<(), String> {
     match t {
         ResolvedType::Sequence { element, .. } => {
+            let body = &read_dheader_begin(out, ind, element);
             if is_byte(element) {
                 out.push_str(&format!(
                     "{}{} = reader.readBytes(reader.readSeqHeader());\n",
-                    ind, target
+                    body, target
                 ));
             } else {
                 let elem_ty = type_to_java(element)?;
                 out.push_str(&format!(
                     "{}{} = new {}[reader.readSeqHeader()];\n",
-                    ind, target, elem_ty
+                    body, target, elem_ty
                 ));
                 let i = format!("i{}", depth);
                 out.push_str(&format!(
                     "{ind}for (int {i} = 0; {i} < {t}.length; {i}++) {{\n",
-                    ind = ind,
+                    ind = body,
                     i = i,
                     t = target
                 ));
-                let inner = format!("{}    ", ind);
+                let inner = format!("{}    ", body);
                 emit_read(out, &inner, &format!("{}[{}]", target, i), element, depth + 1)?;
-                out.push_str(&format!("{}}}\n", ind));
+                out.push_str(&format!("{}}}\n", body));
             }
+            read_dheader_end(out, ind, element);
             return Ok(());
         }
         ResolvedType::Array { element, size } => {
+            let body = &read_dheader_begin(out, ind, element);
             let i = format!("i{}", depth);
             out.push_str(&format!(
                 "{ind}for (int {i} = 0; {i} < {size}; {i}++) {{\n",
-                ind = ind,
+                ind = body,
                 i = i,
                 size = size
             ));
-            let inner = format!("{}    ", ind);
+            let inner = format!("{}    ", body);
             emit_read(out, &inner, &format!("{}[{}]", target, i), element, depth + 1)?;
-            out.push_str(&format!("{}}}\n", ind));
+            out.push_str(&format!("{}}}\n", body));
+            read_dheader_end(out, ind, element);
             return Ok(());
         }
         _ => {}
@@ -881,9 +949,9 @@ fn emit_struct(
         extensibility_const(s.extensibility)
     ));
 
-    // Fields are read as `this.x` so members named writer/reader/token/d are not
-    // shadowed by the locals. A member named `token` compiles either way and would
-    // write the DHEADER token instead of the field.
+    // Fields are read as `this.x` so members named writer/reader/token/d/dh are
+    // not shadowed by the locals. A member named `token` compiles either way and
+    // would write the DHEADER token instead of the field.
     out.push_str("    @Override\n    public void serializeCdr(CdrWriter writer) {\n");
     if appendable {
         out.push_str("        int token = writer.dheaderBegin();\n");
@@ -1414,8 +1482,12 @@ mod tests {
             let files = gen(src, &JavaOptions::default());
             let out = &files[0].source;
             assert!(out.contains(decl), "{}", out);
+            assert!(out.contains("int dh = writer.dheaderBegin();"), "{}", out);
             assert!(out.contains("writer.writeWString(this.ws[i0]);"), "{}", out);
+            assert!(out.contains("writer.dheaderFinalize(dh);"), "{}", out);
+            assert!(out.contains("CdrReader.Dheader dh = reader.readDheader();"), "{}", out);
             assert!(out.contains("this.ws[i0] = reader.readWString();"), "{}", out);
+            assert!(out.contains("reader.readDheaderEnd(dh);"), "{}", out);
         }
     }
 
@@ -1439,6 +1511,9 @@ mod tests {
         assert!(src.contains("writer.writeSeqHeader(this.data.length);"), "{}", src);
         assert!(src.contains("writer.writeBytes(this.data);"), "{}", src);
         assert!(src.contains("this.data = reader.readBytes(reader.readSeqHeader());"), "{}", src);
+        // A primitive element type carries no collection DHEADER.
+        assert!(!src.contains("dheaderBegin"), "{}", src);
+        assert!(!src.contains("readDheader"), "{}", src);
     }
 
     #[test]

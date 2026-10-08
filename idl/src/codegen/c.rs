@@ -1013,6 +1013,10 @@ impl<'a> CGen<'a> {
                 self.raw(&format!("{}{}(&w, ({}){});\n", indent, write_fn, cast_type, accessor));
             }
             ResolvedType::Sequence { element, .. } => {
+                let needs_dh = Self::element_needs_dheader(element);
+                if needs_dh {
+                    self.emit_write_dheader_begin("_seq_dh", indent);
+                }
                 self.raw(&format!(
                     "{}int2dds_cdr_write_seq_header(&w, {}.length);\n",
                     indent, accessor
@@ -1034,8 +1038,15 @@ impl<'a> CGen<'a> {
                     );
                     self.raw(&format!("{}}}\n", indent));
                 }
+                if needs_dh {
+                    self.emit_write_dheader_end("_seq_dh", indent);
+                }
             }
             ResolvedType::Array { element, size } => {
+                let needs_dh = Self::element_needs_dheader(element);
+                if needs_dh {
+                    self.emit_write_dheader_begin("_arr_dh", indent);
+                }
                 if let Some(kind) = self.bulk_element(element) {
                     self.emit_bulk_write(kind, accessor, &size.to_string(), indent);
                 } else {
@@ -1048,16 +1059,15 @@ impl<'a> CGen<'a> {
                     );
                     self.raw(&format!("{}}}\n", indent));
                 }
+                if needs_dh {
+                    self.emit_write_dheader_end("_arr_dh", indent);
+                }
             }
             ResolvedType::Map { key, value, .. } => {
-                let needs_dh = Self::sequence_element_needs_dheader(key)
-                    || Self::sequence_element_needs_dheader(value);
+                let needs_dh =
+                    Self::element_needs_dheader(key) || Self::element_needs_dheader(value);
                 if needs_dh {
-                    self.raw(&format!("{}{{ size_t _map_dh = 0;\n", indent));
-                    self.raw(&format!(
-                        "{}if (w.xcdr2) {{ int2dds_cdr_write_dheader_begin(&w, &_map_dh); }}\n",
-                        indent
-                    ));
+                    self.emit_write_dheader_begin("_map_dh", indent);
                 }
                 self.raw(&format!(
                     "{}int2dds_cdr_write_seq_header(&w, {}.length);\n",
@@ -1073,11 +1083,7 @@ impl<'a> CGen<'a> {
                 self.emit_write_field_indented(value, &val_acc, &format!("{}    ", indent));
                 self.raw(&format!("{}}}\n", indent));
                 if needs_dh {
-                    self.raw(&format!(
-                        "{}if (w.xcdr2) {{ int2dds_cdr_write_dheader_finalize(&w, _map_dh); }}\n",
-                        indent
-                    ));
-                    self.raw(&format!("{}}}\n", indent));
+                    self.emit_write_dheader_end("_map_dh", indent);
                 }
             }
             ResolvedType::Struct(type_name) => {
@@ -1306,6 +1312,10 @@ impl<'a> CGen<'a> {
                 self.raw(&format!("{}{}(&r, ({}*)&{});\n", indent, read_fn, cast_type, accessor));
             }
             ResolvedType::Sequence { element, bound } => {
+                let needs_dh = Self::element_needs_dheader(element);
+                if needs_dh {
+                    self.emit_read_dheader_begin("_seq", indent);
+                }
                 self.raw(&format!(
                     "{}int2dds_cdr_read_seq_header(&r, &{}.length);\n",
                     indent, accessor
@@ -1357,8 +1367,15 @@ impl<'a> CGen<'a> {
                     );
                     self.raw(&format!("{}}}\n", indent));
                 }
+                if needs_dh {
+                    self.emit_read_dheader_end("_seq", indent);
+                }
             }
             ResolvedType::Array { element, size } => {
+                let needs_dh = Self::element_needs_dheader(element);
+                if needs_dh {
+                    self.emit_read_dheader_begin("_arr", indent);
+                }
                 if let Some(kind) = self.bulk_element(element) {
                     self.emit_bulk_read(kind, accessor, &size.to_string(), indent);
                 } else {
@@ -1371,16 +1388,15 @@ impl<'a> CGen<'a> {
                     );
                     self.raw(&format!("{}}}\n", indent));
                 }
+                if needs_dh {
+                    self.emit_read_dheader_end("_arr", indent);
+                }
             }
             ResolvedType::Map { key, value, .. } => {
-                let needs_dh = Self::sequence_element_needs_dheader(key)
-                    || Self::sequence_element_needs_dheader(value);
+                let needs_dh =
+                    Self::element_needs_dheader(key) || Self::element_needs_dheader(value);
                 if needs_dh {
-                    self.raw(&format!("{}{{ uint32_t _map_sz = 0; size_t _map_sp = 0;\n", indent));
-                    self.raw(&format!(
-                        "{}if (r.xcdr2) {{ int2dds_cdr_read_dheader(&r, &_map_sz, &_map_sp); }}\n",
-                        indent
-                    ));
+                    self.emit_read_dheader_begin("_map", indent);
                 }
                 self.raw(&format!(
                     "{}int2dds_cdr_read_seq_header(&r, &{}.length);\n",
@@ -1396,11 +1412,7 @@ impl<'a> CGen<'a> {
                 self.emit_read_field_indented(value, &val_acc, &format!("{}    ", indent));
                 self.raw(&format!("{}}}\n", indent));
                 if needs_dh {
-                    self.raw(&format!(
-                        "{}if (r.xcdr2) {{ int2dds_cdr_read_dheader_end(&r, _map_sz, _map_sp); }}\n",
-                        indent
-                    ));
-                    self.raw(&format!("{}}}\n", indent));
+                    self.emit_read_dheader_end("_map", indent);
                 }
             }
             ResolvedType::Struct(type_name) => {
@@ -1512,17 +1524,59 @@ impl<'a> CGen<'a> {
         self.raw(&format!("{}{};\n", indent, call));
     }
 
-    /// Check if a sequence needs an outer DHEADER in XCDR2.
-    fn sequence_element_needs_dheader(element: &ResolvedType) -> bool {
+    /// XCDR2 frames a collection with a DHEADER iff its element type is not a
+    /// primitive (DDS-XTypes 7.4.3.5.3 rules 9/12). Enums and bitmasks count as
+    /// non-primitive here, matching the Rust `IS_PRIMITIVE` split.
+    fn element_needs_dheader(element: &ResolvedType) -> bool {
         matches!(
             element,
             ResolvedType::String { .. }
                 | ResolvedType::WString { .. }
                 | ResolvedType::Struct(_)
+                | ResolvedType::Enum(_)
+                | ResolvedType::Bitmask(_)
                 | ResolvedType::Sequence { .. }
                 | ResolvedType::Array { .. }
                 | ResolvedType::Map { .. }
         )
+    }
+
+    /// Open a block that frames the following collection write with an XCDR2
+    /// DHEADER; `emit_write_dheader_end` closes it.
+    fn emit_write_dheader_begin(&mut self, token: &str, indent: &str) {
+        self.raw(&format!("{}{{ size_t {} = 0;\n", indent, token));
+        self.raw(&format!(
+            "{}if (w.xcdr2) {{ int2dds_cdr_write_dheader_begin(&w, &{}); }}\n",
+            indent, token
+        ));
+    }
+
+    fn emit_write_dheader_end(&mut self, token: &str, indent: &str) {
+        self.raw(&format!(
+            "{}if (w.xcdr2) {{ int2dds_cdr_write_dheader_finalize(&w, {}); }}\n",
+            indent, token
+        ));
+        self.raw(&format!("{}}}\n", indent));
+    }
+
+    /// Read-side counterpart of `emit_write_dheader_begin`; declares `<prefix>_sz`
+    /// and `<prefix>_sp`.
+    fn emit_read_dheader_begin(&mut self, prefix: &str, indent: &str) {
+        self.raw(&format!("{}{{ uint32_t {p}_sz = 0; size_t {p}_sp = 0;\n", indent, p = prefix));
+        self.raw(&format!(
+            "{}if (r.xcdr2) {{ int2dds_cdr_read_dheader(&r, &{p}_sz, &{p}_sp); }}\n",
+            indent,
+            p = prefix
+        ));
+    }
+
+    fn emit_read_dheader_end(&mut self, prefix: &str, indent: &str) {
+        self.raw(&format!(
+            "{}if (r.xcdr2) {{ int2dds_cdr_read_dheader_end(&r, {p}_sz, {p}_sp); }}\n",
+            indent,
+            p = prefix
+        ));
+        self.raw(&format!("{}}}\n", indent));
     }
 
     /// Look up a bitset by name, returning it if found.

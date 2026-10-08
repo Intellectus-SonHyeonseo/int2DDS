@@ -1954,7 +1954,8 @@ mod tests {
     }
 
     /// Fixed-array-of-struct @key (`Point[2]`). Element referenced by content-hash wrapped
-    /// in a plain-array id; key resolves to the raw 16-byte inline serialization.
+    /// in a plain-array id; the key holder is the array's collection DHEADER plus the
+    /// 16 inline bytes, so it exceeds 16 bytes and hashes (MD5) — must match derive.
     #[test]
     fn test_type_info_array_of_struct_key_matches_derive() {
         use int2dds::topic::type_support::{DdsType, TypeSupport};
@@ -2010,7 +2011,9 @@ mod tests {
         let handle = dts.compute_key(&dyn_data);
 
         assert_eq!(handle, oracle, "array-of-struct key must match derive oracle");
-        assert_eq!(*handle.value(), [0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4]);
+        // Key holder (BE): DHEADER 16, then x1 y1 x2 y2.
+        let holder = [0u8, 0, 0, 16, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4];
+        assert_eq!(*handle.value(), md5::compute(holder).0);
     }
 
     /// Sequence-of-struct @key (`sequence<Point>`). Element referenced by content-hash
