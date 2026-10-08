@@ -375,6 +375,7 @@ fn deserialize_enum_value<D: ValueDeserializer>(
 }
 
 /// Read an enum value and resolve its literal name into a `DynamicValue::Enum`.
+/// A value without a literal cannot construct the local type (XTypes 1.3 Table 18).
 fn deserialize_enum<D: ValueDeserializer>(
     deserializer: &mut D,
     enum_desc: &EnumDescriptor,
@@ -383,8 +384,19 @@ fn deserialize_enum<D: ValueDeserializer>(
     let name = enum_desc
         .get_literal_by_value(value)
         .map(|literal| literal.name.clone())
-        .unwrap_or_default();
+        .ok_or_else(|| DdsError::Error(format!("enum value {value} has no literal")))?;
     Ok(DynamicValue::Enum { name, value })
+}
+
+/// Received objects longer than the local bound cannot construct it; the default
+/// TryConstruct behavior is DISCARD (XTypes 1.3 7.2.4.1).
+fn check_bound(len: usize, bound: Option<u32>, what: &str) -> DdsResult<()> {
+    match bound {
+        Some(max) if len > max as usize => {
+            Err(DdsError::Error(format!("{what} length {len} exceeds bound {max}")))
+        }
+        _ => Ok(()),
+    }
 }
 
 /// Write `f`, framing it with an XCDR2 collection DHEADER when `framed` is true
@@ -676,11 +688,15 @@ where
 {
     match type_kind {
         DynamicTypeKind::Primitive(kind) => deserialize_primitive(deserializer, *kind),
-        DynamicTypeKind::String { .. } => {
-            Ok(DynamicValue::String(deserializer.deserialize_string().map_err(cdr_error)?))
+        DynamicTypeKind::String { bound } => {
+            let value = deserializer.deserialize_string().map_err(cdr_error)?;
+            check_bound(value.chars().count(), *bound, "string")?;
+            Ok(DynamicValue::String(value))
         }
-        DynamicTypeKind::WString { .. } => {
-            Ok(DynamicValue::WString(deserializer.deserialize_wstring16().map_err(cdr_error)?))
+        DynamicTypeKind::WString { bound } => {
+            let value = deserializer.deserialize_wstring16().map_err(cdr_error)?;
+            check_bound(value.encode_utf16().count(), *bound, "wstring")?;
+            Ok(DynamicValue::WString(value))
         }
         DynamicTypeKind::Enum(enum_desc) => deserialize_enum(deserializer, enum_desc),
         DynamicTypeKind::Struct(struct_desc) => {
@@ -716,8 +732,9 @@ fn deserialize_value_cdr(
     type_kind: &DynamicTypeKind,
 ) -> DdsResult<DynamicValue> {
     match type_kind {
-        DynamicTypeKind::Sequence { element_type, .. } => {
+        DynamicTypeKind::Sequence { element_type, bound } => {
             let len = deserializer.deserialize_u32().map_err(cdr_error)? as usize;
+            check_bound(len, *bound, "sequence")?;
             let mut items = Vec::new();
             for _ in 0..len {
                 items.push(deserialize_value_cdr(deserializer, element_type)?);
@@ -732,8 +749,9 @@ fn deserialize_value_cdr(
             }
             Ok(DynamicValue::Array(items))
         }
-        DynamicTypeKind::Map { key_type, value_type, .. } => {
+        DynamicTypeKind::Map { key_type, value_type, bound } => {
             let len = deserializer.deserialize_u32().map_err(cdr_error)? as usize;
+            check_bound(len, *bound, "map")?;
             let mut entries = Vec::new();
             for _ in 0..len {
                 let key = deserialize_value_cdr(deserializer, key_type)?;
@@ -772,11 +790,12 @@ fn deserialize_value_xcdr2(
     type_kind: &DynamicTypeKind,
 ) -> DdsResult<DynamicValue> {
     match type_kind {
-        DynamicTypeKind::Sequence { element_type, .. } => {
+        DynamicTypeKind::Sequence { element_type, bound } => {
             if !is_primitive_kind(element_type) {
                 deserializer.read_dheader().map_err(cdr_error)?;
             }
             let len = deserializer.deserialize_u32().map_err(cdr_error)? as usize;
+            check_bound(len, *bound, "sequence")?;
             let mut items = Vec::new();
             for _ in 0..len {
                 items.push(deserialize_value_xcdr2(deserializer, element_type)?);
@@ -794,11 +813,12 @@ fn deserialize_value_xcdr2(
             }
             Ok(DynamicValue::Array(items))
         }
-        DynamicTypeKind::Map { key_type, value_type, .. } => {
+        DynamicTypeKind::Map { key_type, value_type, bound } => {
             if !(is_primitive_kind(key_type) && is_primitive_kind(value_type)) {
                 let _ = deserializer.read_dheader().map_err(cdr_error)?;
             }
             let len = deserializer.deserialize_u32().map_err(cdr_error)? as usize;
+            check_bound(len, *bound, "map")?;
             let mut entries = Vec::new();
             for _ in 0..len {
                 let key = deserialize_value_xcdr2(deserializer, key_type)?;
@@ -994,12 +1014,24 @@ fn deserialize_struct_members_mutable_cdr(
     Ok(values)
 }
 
+/// `object_end` bounds an appendable object (DHEADER): members the writer did not
+/// send take their default value (XTypes 1.3 Table 19).
 fn deserialize_struct_members_xcdr2(
     deserializer: &mut Xcdr2Deserializer,
     struct_desc: &StructDescriptor,
+    object_end: Option<usize>,
 ) -> DdsResult<HashMap<Arc<str>, DynamicValue>> {
     let mut values = HashMap::new();
     for member in struct_desc.members() {
+        if object_end.is_some_and(|end| deserializer.get_position() >= end) {
+            if !member.is_optional {
+                values.insert(
+                    member.name.clone(),
+                    DynamicValue::default_for_kind(&member.member_type),
+                );
+            }
+            continue;
+        }
         if member.is_optional {
             let present = deserializer.deserialize_bool().map_err(cdr_error)?;
             if present {
@@ -1511,11 +1543,12 @@ fn deserialize_struct_xcdr(
 
     match extensibility {
         ExtensibilityKind::Final => {
-            values = deserialize_struct_members_xcdr2(deserializer, struct_desc)?;
+            values = deserialize_struct_members_xcdr2(deserializer, struct_desc, None)?;
         }
         ExtensibilityKind::Appendable => {
             let (object_size, start_pos) = deserializer.begin_struct().map_err(cdr_error)?;
-            values = deserialize_struct_members_xcdr2(deserializer, struct_desc)?;
+            let object_end = start_pos + object_size as usize;
+            values = deserialize_struct_members_xcdr2(deserializer, struct_desc, Some(object_end))?;
             deserializer.end_struct(object_size, start_pos).map_err(cdr_error)?;
         }
         ExtensibilityKind::Mutable => {
