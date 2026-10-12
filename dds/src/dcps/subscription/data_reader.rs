@@ -1465,18 +1465,10 @@ impl<Foo: 'static + Clone + Debug> DataReader<Foo> {
         let subscriber = self.subscriber_arc()?;
         let participant = subscriber.participant_arc()?;
 
-        // on_data_on_readers is tried first and on_data_available runs only when none was
-        // called. Within each of the two, the most specific enabled listener wins.
+        // on_data_on_readers is tried on the Subscriber and on_data_available runs only when it
+        // was not called. Within on_data_available the most specific enabled listener wins.
         if subscriber.get_listener_mask()?.contains(StatusKind::DATA_ON_READERS) {
             if let Some(listener) = subscriber.get_listener()? {
-                let _marker = OnDataOnReadersGuard::new(subscriber.guid());
-                listener.on_data_on_readers(&subscriber);
-                return Ok(());
-            }
-        }
-
-        if participant.get_listener_mask()?.contains(StatusKind::DATA_ON_READERS) {
-            if let Some(listener) = participant.get_listener()? {
                 let _marker = OnDataOnReadersGuard::new(subscriber.guid());
                 listener.on_data_on_readers(&subscriber);
                 return Ok(());
@@ -4354,14 +4346,18 @@ pub(crate) mod tests {
     use super::*;
     use crate::dcps::topic::type_support::DdsType;
     use crate::domain::domain_participant_factory::DomainParticipantFactory;
+    use crate::domain::domain_participant_listener::DomainParticipantListener;
     use crate::domain::qos::DomainParticipantQos;
     use crate::infrastructure::qos_policy::{
         DurabilityQosPolicy, DurabilityQosPolicyKind, HistoryQosPolicy, HistoryQosPolicyKind,
         PresentationQosAccessScopeKind, PresentationQosPolicy, ReliabilityQosPolicy,
         ReliabilityQosPolicyKind,
     };
+    use crate::infrastructure::status::PublicationMatchedStatus;
     use crate::infrastructure::wait_set::WaitSet;
+    use crate::publication::data_writer::DataWriterBase;
     use crate::publication::data_writer_listener::DataWriterListener;
+    use crate::publication::publisher_listener::PublisherListener;
     use crate::publication::qos::{DataWriterQos, PublisherQos};
     use crate::rtps::entities::reader::StatefulReader;
     use crate::subscription::data_reader_listener::DataReaderListener;
@@ -4370,6 +4366,7 @@ pub(crate) mod tests {
     use crate::subscription::subscriber_listener::SubscriberListener;
     use crate::test_utils::unique_domain_id;
     use crate::topic::qos::TopicQos;
+    use crate::topic::topic_listener::TopicListener;
     use std::sync::atomic::AtomicUsize;
     use std::sync::mpsc::{sync_channel, SyncSender};
     use std::sync::Arc;
@@ -7788,5 +7785,129 @@ pub(crate) mod tests {
 
         assert_eq!(on_data_on_readers, 1);
         assert_eq!(on_data_available, 1);
+    }
+
+    struct MatchOnlyParticipantListener {
+        on_publication_matched_count: Arc<AtomicUsize>,
+    }
+
+    impl TopicListener for MatchOnlyParticipantListener {}
+
+    impl SubscriberListener for MatchOnlyParticipantListener {}
+
+    impl PublisherListener for MatchOnlyParticipantListener {
+        fn on_publication_matched(
+            &self,
+            _writer: &dyn DataWriterBase<Qos = DataWriterQos>,
+            _status: &PublicationMatchedStatus,
+        ) {
+            self.on_publication_matched_count.fetch_add(1, Ordering::AcqRel);
+        }
+    }
+
+    impl DomainParticipantListener for MatchOnlyParticipantListener {}
+
+    // A participant listener registered with StatusMask::default() has DATA_ON_READERS in its
+    // mask and inherits the no-op on_data_on_readers. The reader listener must still be called.
+    #[test]
+    fn test_participant_listener_with_the_default_mask_does_not_swallow_on_data_available() {
+        let factory = DomainParticipantFactory::get_instance();
+        let on_publication_matched_count = Arc::new(AtomicUsize::new(0));
+
+        let participant_listener = MatchOnlyParticipantListener {
+            on_publication_matched_count: Arc::clone(&on_publication_matched_count),
+        };
+
+        let participant = factory
+            .create_participant(
+                unique_domain_id(),
+                DomainParticipantQos::default(),
+                Some(Arc::new(participant_listener)),
+                StatusMask::default(),
+            )
+            .unwrap();
+
+        let topic = participant
+            .create_topic::<HelloWorld>(
+                "ParticipantListenerDefaultMask",
+                "HelloWorldType",
+                TopicQos::default(),
+                None,
+                StatusMask::default(),
+            )
+            .unwrap();
+
+        let reliable_keep_all_writer_qos = DataWriterQos {
+            history: HistoryQosPolicy { kind: HistoryQosPolicyKind::KeepAll, strict: true },
+            reliability: ReliabilityQosPolicy {
+                kind: ReliabilityQosPolicyKind::Reliable,
+                max_blocking_time: Duration::from_seconds(1),
+            },
+            ..Default::default()
+        };
+        let publisher = participant
+            .create_publisher(PublisherQos::default(), None, StatusMask::default())
+            .unwrap();
+        let writer = publisher
+            .create_datawriter::<HelloWorld>(
+                &topic,
+                reliable_keep_all_writer_qos,
+                None,
+                StatusMask::default(),
+            )
+            .unwrap();
+
+        let on_data_available_count = Arc::new(AtomicUsize::new(0));
+
+        let subscriber = participant
+            .create_subscriber(SubscriberQos::default(), None, StatusMask::default())
+            .unwrap();
+
+        let reliable_keep_all_reader_qos = DataReaderQos {
+            history: HistoryQosPolicy { kind: HistoryQosPolicyKind::KeepAll, strict: true },
+            reliability: ReliabilityQosPolicy {
+                kind: ReliabilityQosPolicyKind::Reliable,
+                max_blocking_time: Duration::from_seconds(1),
+            },
+            ..Default::default()
+        };
+        let _reader = subscriber
+            .create_datareader::<HelloWorld>(
+                &topic,
+                reliable_keep_all_reader_qos,
+                Some(Arc::new(CountingReaderListener {
+                    on_data_available_count: Arc::clone(&on_data_available_count),
+                })),
+                StatusMask::default(),
+            )
+            .unwrap();
+
+        let condition = writer.get_statuscondition().unwrap().clone();
+        condition.set_enabled_statuses(StatusMask::PUBLICATION_MATCHED).unwrap();
+        let wait_set = WaitSet::new();
+        wait_set.attach_condition(condition.clone()).unwrap();
+        wait_set.wait(Duration::from_seconds(10)).expect("timed out waiting for the reader");
+        wait_set.detach_condition(condition).unwrap();
+
+        writer
+            .write(&HelloWorld { index: 0, message: "sample".to_string() }, InstanceHandle::NIL)
+            .unwrap();
+
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+
+        while on_data_available_count.load(Ordering::Acquire) == 0
+            && std::time::Instant::now() < deadline
+        {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+
+        let on_data_available = on_data_available_count.load(Ordering::Acquire);
+        let on_publication_matched = on_publication_matched_count.load(Ordering::Acquire);
+
+        participant.delete_contained_entities().unwrap();
+        factory.delete_participant(participant).unwrap();
+
+        assert!(on_publication_matched > 0, "the participant listener was never called");
+        assert_eq!(on_data_available, 1, "the reader listener must receive the sample");
     }
 }
