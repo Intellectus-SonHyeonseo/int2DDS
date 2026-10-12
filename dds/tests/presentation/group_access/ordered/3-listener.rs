@@ -5,8 +5,14 @@ use std::sync::Mutex;
 
 use super::*;
 use int2dds::{
-    common::instance_handle::InstanceHandle, core::error::DdsError,
-    subscription::subscriber_listener::SubscriberListener,
+    common::instance_handle::InstanceHandle,
+    core::error::DdsError,
+    domain::domain_participant_listener::DomainParticipantListener,
+    publication::publisher_listener::PublisherListener,
+    subscription::{
+        data_reader_listener::DataReaderListener, subscriber_listener::SubscriberListener,
+    },
+    topic::topic_listener::TopicListener,
 };
 
 // Reads inside on_data_on_readers and reports what it saw. The callback never opens an access
@@ -52,6 +58,26 @@ impl SubscriberListener for BlockingSubscriberListener {
                 let _ = release.recv_timeout(POLL_TIMEOUT);
             }
         }
+    }
+}
+
+// Overrides no callback, so every status reaches the participant with the default bodies.
+struct DefaultParticipantListener;
+
+impl TopicListener for DefaultParticipantListener {}
+impl SubscriberListener for DefaultParticipantListener {}
+impl PublisherListener for DefaultParticipantListener {}
+impl DomainParticipantListener for DefaultParticipantListener {}
+
+struct ReportingReaderListener {
+    report: SyncSender<()>,
+}
+
+impl DataReaderListener for ReportingReaderListener {
+    type Foo = KeyedDataType;
+
+    fn on_data_available(&self, _reader: &DataReader<KeyedDataType>) {
+        let _ = self.report.try_send(());
     }
 }
 
@@ -140,6 +166,55 @@ fn group_ordered_listener_exemption_does_not_reach_another_thread() {
     ));
 
     let _ = release.try_send(());
+
+    delete_participants(writer_participant, reader_participant);
+}
+
+// A participant listener installed with the default mask leaves on_data_available to the reader
+// listener.
+#[test]
+fn participant_listener_with_the_default_mask_does_not_swallow_on_data_available() {
+    let domain_id = next_domain_id();
+    let writer_participant = create_participant(domain_id);
+    let reader_participant = DomainParticipantFactory::get_instance()
+        .create_participant(
+            domain_id,
+            DomainParticipantQos::default(),
+            Some(Arc::new(DefaultParticipantListener)),
+            StatusMask::default(),
+        )
+        .unwrap();
+
+    let topic_name = "GroupOrderedParticipantListener";
+
+    let publisher = make_publisher(&writer_participant, group_presentation(true));
+    let writer = make_writer(&writer_participant, &publisher, topic_name);
+
+    let subscriber = make_subscriber(&reader_participant, group_presentation(true));
+    let topic = reader_participant
+        .create_topic::<KeyedDataType>(
+            topic_name,
+            KeyedDataType::get_type_name(),
+            TopicQos::default(),
+            None,
+            StatusMask::default(),
+        )
+        .unwrap();
+    let (report, reports) = sync_channel(4);
+    let _reader = subscriber
+        .create_datareader::<KeyedDataType>(
+            &topic,
+            reliable_keep_all_reader_qos(),
+            Some(Arc::new(ReportingReaderListener { report })),
+            StatusMask::default(),
+        )
+        .unwrap();
+
+    wait_for_match(&writer);
+
+    writer.write(&KeyedDataType::new(1, 1), InstanceHandle::NIL).unwrap();
+
+    reports.recv_timeout(POLL_TIMEOUT).expect("the reader listener never got on_data_available");
 
     delete_participants(writer_participant, reader_participant);
 }

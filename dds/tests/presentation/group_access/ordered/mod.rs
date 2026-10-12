@@ -7,6 +7,8 @@ pub(crate) use super::*;
 mod communication;
 #[path = "4-connectivity.rs"]
 mod connectivity;
+#[path = "5-history.rs"]
+mod history;
 #[path = "3-listener.rs"]
 mod listener;
 #[path = "2-non-group-subscriber.rs"]

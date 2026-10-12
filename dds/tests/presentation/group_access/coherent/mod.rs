@@ -9,6 +9,8 @@ mod atomicity;
 mod communication;
 #[path = "5-connectivity.rs"]
 mod connectivity;
+#[path = "6-history.rs"]
+mod history;
 #[path = "4-listener.rs"]
 mod listener;
 #[path = "3-non-group-subscriber.rs"]
