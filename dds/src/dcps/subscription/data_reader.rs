@@ -7908,4 +7908,105 @@ pub(crate) mod tests {
         assert!(on_publication_matched > 0, "the participant listener was never called");
         assert_eq!(on_data_available, 1, "the reader listener must receive the sample");
     }
+
+    #[test]
+    fn test_commit_drops_a_coherent_set_that_does_not_fit_and_keeps_the_sample_after_it() {
+        let factory = DomainParticipantFactory::get_instance();
+        let participant = factory
+            .create_participant(
+                unique_domain_id(),
+                DomainParticipantQos::default(),
+                None,
+                StatusMask::default(),
+            )
+            .unwrap();
+        let topic = participant
+            .create_topic::<TestData>(
+                "CommitCoherentSetTopic",
+                "TestData",
+                TopicQos::default(),
+                None,
+                StatusMask::default(),
+            )
+            .unwrap();
+        let subscriber = participant
+            .create_subscriber(
+                SubscriberQos {
+                    presentation: PresentationQosPolicy {
+                        access_scope: PresentationQosAccessScopeKind::Topic,
+                        coherent_access: true,
+                        ordered_access: false,
+                    },
+                    ..Default::default()
+                },
+                None,
+                StatusMask::default(),
+            )
+            .unwrap();
+        let reader = subscriber
+            .create_datareader::<TestData>(
+                &topic,
+                DataReaderQos {
+                    history: HistoryQosPolicy {
+                        kind: HistoryQosPolicyKind::KeepLast(2),
+                        strict: true,
+                    },
+                    ..Default::default()
+                },
+                None,
+                StatusMask::default(),
+            )
+            .unwrap();
+
+        let writer_guid = Guid::new(
+            [1; 12],
+            crate::rtps::common::entity_id::EntityId::new(
+                [0, 0, 2],
+                crate::rtps::common::entity_kind::EntityKind::USER_DEFINED_WRITER_WITH_KEY,
+            ),
+        );
+        let change = |seq: i64, coherent_set: Option<i64>| {
+            let mut change = CacheChange::new(
+                ChangeKind::Alive,
+                writer_guid,
+                InstanceHandle::new([1; 16]),
+                SequenceNumber::from_i64(seq),
+                vec![0u8; 4],
+                None,
+            );
+            change.set_presentation_info(
+                crate::rtps::entities::history::cache_change::PresentationInfo {
+                    coherent_set: coherent_set.map(SequenceNumber::from_i64),
+                    ..Default::default()
+                },
+            );
+
+            change
+        };
+
+        // A set of three members on one instance exceeds the depth of 2. The sample after it
+        // is judged on its own.
+        let changes = vec![
+            (change(10, Some(10)), false),
+            (change(11, Some(10)), false),
+            (change(12, Some(10)), false),
+            (change(13, None), true),
+        ];
+
+        let rtps_reader = reader.get_rtps_reader().unwrap();
+        let available = rtps_reader
+            .reader_cache()
+            .lock()
+            .unwrap()
+            .commit_changes_to_datareader_cache(changes)
+            .unwrap();
+        drop(rtps_reader);
+
+        let stored: Vec<i64> =
+            available.iter().map(|change| change.sequence_number().to_i64()).collect();
+        assert_eq!(stored, vec![13]);
+
+        participant.delete_contained_entities().unwrap();
+        factory.delete_participant(participant).unwrap();
+    }
 }

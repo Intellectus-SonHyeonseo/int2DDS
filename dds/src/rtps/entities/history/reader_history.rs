@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     sync::{Arc, Mutex, Weak},
 };
 
@@ -268,8 +268,8 @@ impl ReaderHistoryCache {
                     return members.into_iter().map(|c| (c, false)).collect();
                 }
                 None => {
-                    // A non-coherent sample closes this writer's open set (if any); commit that
-                    // set and this sample together so a take() sees all of it or none.
+                    // A non-coherent sample closes this writer's open set (if any). The set and
+                    // this sample are stored or dropped separately.
                     let members = if self.coherent_pending.contains_key(&writer_guid) {
                         // This sample sits one past the open set's (possibly lost) end marker.
                         self.close_and_take_coherent_set(
@@ -313,49 +313,69 @@ impl ReaderHistoryCache {
                     )
                 })?;
 
-                // A coherent set that cannot be stored in full is dropped whole, never partially:
-                // a member lost to History/ResourceLimits would make the set incomplete.
-                // len > 1 limits this to real sets; a lone sample keeps the normal evict/reject path.
-                if datareader_cache.is_coherent_access() && changes.len() > 1 {
-                    let mut len_per_instance: HashMap<InstanceHandle, usize> = HashMap::new();
-                    for (change, _) in &changes {
-                        *len_per_instance.entry(change.instance_handle()).or_insert(0) += 1;
-                    }
-                    let fits = datareader_cache
-                        .ensure_capacity_dry(&len_per_instance)
-                        .map_err(|e| RtpsError::new(RtpsErrorCode::DdsError, e.to_string()))?;
-                    if !fits {
-                        return Ok(available);
-                    }
-                }
+                let is_coherent_access = datareader_cache.is_coherent_access();
+                let mut remaining = VecDeque::from(changes);
 
-                for (mut change, apply_filter) in changes {
-                    // Mutate the change before making it immutable
-                    datareader_cache
-                        .add_info_to_cache_change(&mut change)
-                        .map_err(|e| RtpsError::new(RtpsErrorCode::DdsError, e.to_string()))?;
+                while !remaining.is_empty() {
+                    // Count set's length if this change belongs to a coherent set under coherent
+                    // access. Otherwise the length is 1.
+                    let coherent_set_len = if is_coherent_access {
+                        1 + remaining
+                            .iter()
+                            .zip(remaining.iter().skip(1))
+                            .take_while(|((previous, _), (next, _))| {
+                                Self::is_same_coherent_set(previous, next)
+                            })
+                            .count()
+                    } else {
+                        1
+                    };
 
-                    // Wrap in Arc once — no deep copy
-                    let shared = Arc::new(change);
-
-                    // Insert into DataReaderHistoryCache (Arc::clone only)
-                    let (removed, filtered) = datareader_cache
-                        .add_change_with_cleanup(Arc::clone(&shared), apply_filter)
-                        .map_err(|e| RtpsError::new(RtpsErrorCode::DdsError, e.to_string()))?;
-
-                    // Held by TIME_BASED_FILTER: not stored in either history, no notification.
-                    if filtered {
-                        continue;
-                    }
-
-                    // Insert into RTPS ReaderHistoryCache (Arc::clone only)
-                    self.changes.push(Arc::clone(&shared));
-
-                    if let Some(removed_change) = removed {
-                        self.remove_change(removed_change)?;
+                    // A coherent set that cannot be stored in full is dropped whole, never
+                    // partially: a member lost to History/ResourceLimits leaves the set incomplete.
+                    if coherent_set_len > 1 {
+                        let mut len_per_instance: HashMap<InstanceHandle, usize> = HashMap::new();
+                        for (change, _) in remaining.iter().take(coherent_set_len) {
+                            *len_per_instance.entry(change.instance_handle()).or_insert(0) += 1;
+                        }
+                        let fits = datareader_cache
+                            .ensure_capacity_dry(&len_per_instance)
+                            .map_err(|e| RtpsError::new(RtpsErrorCode::DdsError, e.to_string()))?;
+                        if !fits {
+                            remaining.drain(..coherent_set_len);
+                            continue;
+                        }
                     }
 
-                    available.push(shared);
+                    for (mut change, apply_filter) in remaining.drain(..coherent_set_len) {
+                        // Mutate the change before making it immutable
+                        datareader_cache
+                            .add_info_to_cache_change(&mut change)
+                            .map_err(|e| RtpsError::new(RtpsErrorCode::DdsError, e.to_string()))?;
+
+                        // Wrap in Arc once — no deep copy
+                        let shared = Arc::new(change);
+
+                        // Insert into DataReaderHistoryCache (Arc::clone only)
+                        let (removed, filtered) = datareader_cache
+                            .add_change_with_cleanup(Arc::clone(&shared), apply_filter)
+                            .map_err(|e| RtpsError::new(RtpsErrorCode::DdsError, e.to_string()))?;
+
+                        // Held by TIME_BASED_FILTER: not stored in either history, no
+                        // notification.
+                        if filtered {
+                            continue;
+                        }
+
+                        // Insert into RTPS ReaderHistoryCache (Arc::clone only)
+                        self.changes.push(Arc::clone(&shared));
+
+                        if let Some(removed_change) = removed {
+                            self.remove_change(removed_change)?;
+                        }
+
+                        available.push(shared);
+                    }
                 }
 
                 return Ok(available);
@@ -384,6 +404,21 @@ impl ReaderHistoryCache {
                 RtpsErrorCode::DataReaderCacheNotSet,
                 "DataReader cache is not set for ReaderHistoryCache",
             ))
+        }
+    }
+
+    fn is_same_coherent_set(previous: &CacheChange, next: &CacheChange) -> bool {
+        let previous_info = previous.presentation_info();
+        let next_info = next.presentation_info();
+
+        match (previous_info.group_coherent_set, next_info.group_coherent_set) {
+            (Some(previous_set), Some(next_set)) => previous_set == next_set,
+            (None, None) => {
+                previous_info.coherent_set.is_some()
+                    && previous_info.coherent_set == next_info.coherent_set
+                    && previous.writer_guid() == next.writer_guid()
+            }
+            _ => false,
         }
     }
 
@@ -444,19 +479,7 @@ impl ReaderHistoryCache {
             }
         }
 
-        // Clear each member's coherent id so re-insertion is not taken as a set boundary.
-        CoherentSetCloseResult::Complete(
-            pending
-                .changes
-                .into_iter()
-                .map(|mut member| {
-                    let mut info = member.presentation_info().clone();
-                    info.coherent_set = None;
-                    member.set_presentation_info(info);
-                    member
-                })
-                .collect(),
-        )
+        CoherentSetCloseResult::Complete(pending.changes)
     }
 
     // True when the attached DCPS reader requests coherent access (INSTANCE or TOPIC scope).
