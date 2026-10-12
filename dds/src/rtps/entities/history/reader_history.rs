@@ -7,6 +7,7 @@ use log::debug;
 
 use crate::{
     common::instance_handle::InstanceHandle,
+    core::types::LENGTH_UNLIMITED,
     infrastructure::history_cache::HistoryCache as dcps_history_cache,
     rtps::{
         builtin::builtin_endpoints::BUILTIN_ENDPOINT_HISTORYCACHE_CAPACITY,
@@ -65,8 +66,8 @@ pub struct ReaderHistoryCache {
     pool: CacheChangePool,
     // Open coherent sets per remote writer, held back until each set completes.
     coherent_pending: HashMap<Guid, PendingCoherentSet>,
-    // The reader's RESOURCE_LIMITS max_samples, usize::MAX when unlimited.
-    max_samples: usize,
+    // Samples buffered for this reader before they reach its history.
+    presentation_buffer_limit: usize,
 }
 
 impl HistoryCache for ReaderHistoryCache {
@@ -134,7 +135,7 @@ impl ReaderHistoryCache {
             // Steady-state size converges to history depth.
             pool: CacheChangePool::with_capacity(0),
             coherent_pending: HashMap::new(),
-            max_samples: usize::MAX,
+            presentation_buffer_limit: usize::MAX,
         }
     }
 
@@ -171,10 +172,24 @@ impl ReaderHistoryCache {
                 let max_samples = guard.get_max_samples();
 
                 self.pool.set_cap((max_samples.max(0) as usize).min(MAX_POOL_CAP));
-                // LENGTH_UNLIMITED reaches here as a non-positive count.
-                self.max_samples = if max_samples > 0 { max_samples as usize } else { usize::MAX };
             }
         }
+    }
+
+    pub(crate) fn set_buffer_limit(&mut self, buffer_limit: usize) {
+        self.presentation_buffer_limit = buffer_limit;
+    }
+
+    // Twice the RESOURCE_LIMITS max_samples, with LENGTH_UNLIMITED read as i32::MAX the way the
+    // history reads it. Any other negative value counts as zero.
+    pub(crate) fn buffer_limit_of(resource_limits_max_samples: i32) -> usize {
+        let max_samples = if resource_limits_max_samples == LENGTH_UNLIMITED {
+            i32::MAX
+        } else {
+            resource_limits_max_samples
+        };
+
+        (max_samples.max(0) as usize).saturating_mul(2)
     }
 
     /// Add CacheChange to ReaderHistoryCache.
@@ -372,7 +387,7 @@ impl ReaderHistoryCache {
         }
     }
 
-    // Buffer a coherent member until its set closes. Past the reader's max_samples the arriving
+    // Buffer a coherent member until its set closes. Past the reader's buffer limit the arriving
     // portion keeps its entry with no members, so closing it reports Incomplete.
     fn buffer_coherent_member(
         &mut self,
@@ -380,7 +395,7 @@ impl ReaderHistoryCache {
         set_id: SequenceNumber,
         change: CacheChange,
     ) {
-        let cap = self.max_samples;
+        let cap = self.presentation_buffer_limit;
         let coherent_pending_change_count = self.coherent_pending_change_count();
 
         let pending = self
@@ -391,8 +406,8 @@ impl ReaderHistoryCache {
 
         if coherent_pending_change_count >= cap {
             debug!(
-                "Discarding coherent set {} from writer {}: the reader already buffers \
-                 max_samples {}",
+                "Discarding coherent set {} from writer {}: the reader already buffers its \
+                 buffer limit {}",
                 set_id.to_i64(),
                 writer_guid,
                 cap
@@ -442,10 +457,6 @@ impl ReaderHistoryCache {
                 })
                 .collect(),
         )
-    }
-
-    pub(crate) fn max_samples(&self) -> usize {
-        self.max_samples
     }
 
     // True when the attached DCPS reader requests coherent access (INSTANCE or TOPIC scope).
@@ -605,7 +616,7 @@ mod tests {
         let mut cache = reader_cache();
         let guid = writer_guid();
         let set_id = SequenceNumber::from_i64(10);
-        cache.max_samples = 2;
+        cache.presentation_buffer_limit = 2;
 
         for seq in [10, 11, 12] {
             cache.buffer_coherent_member(guid, set_id, coherent_member(seq));

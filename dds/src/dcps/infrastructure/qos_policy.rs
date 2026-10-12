@@ -721,13 +721,6 @@ impl PresentationQosAccessScopeKind {
 /// - `Topic`: Changes are coherent/ordered at topic level
 /// - `Group`: Changes are coherent/ordered at group (Publisher/Subscriber) level
 ///
-/// # Group access scope
-///
-/// A Subscriber with `access_scope = Group` must bracket its sample access in
-/// `begin_access` / `end_access`, except inside its own `on_data_on_readers` callback. Only a
-/// `Reliable` DataReader takes part in the group order. Samples held back before they reach a
-/// reader's history are bounded by that reader's [`ResourceLimitsQosPolicy`].
-///
 /// # Default
 /// `access_scope` is `Instance`, `coherent_access` and `ordered_access` are `false`.
 #[derive(DdsType, ConstDefault, Copy, Eq)]
@@ -1720,20 +1713,16 @@ impl QosPolicy for DurabilityQosPolicy {
 ///
 /// # Interaction with PresentationQosPolicy
 ///
-/// Either of two PRESENTATION settings adds a holding area that a reader's samples pass through
-/// before they are stored. Each area enforces the same effective `max_samples` as the history,
-/// independently of the other:
+/// With `coherent_access` and access_scope Instance or Topic, a reader buffers the members of a
+/// coherent set until that set closes. The buffer holds twice this `max_samples`, counted across
+/// all remote DataWriters, with `LENGTH_UNLIMITED` counted as `i32::MAX` as it is for the
+/// history. A member arriving at a full buffer discards the coherent set it belongs to.
 ///
-/// 1. **coherent_access**: Holds the members of a coherent set until that set closes.
-///    One `max_samples` for the reader, counted across all remote DataWriters.
+/// A coherent set that the history cannot store whole is discarded.
 ///
-/// 2. **access_scope = Group**: Holds every sample until the group order hands it over, a closed
-///    coherent set as a single unit. One `max_samples` for the reader, counted across all remote
-///    Publishers.
-///
-/// A reader's samples in flight can therefore reach `max_samples` per area in addition to those
-/// stored. When an area is full, the arriving sample is dropped. If it belongs to a coherent
-/// set, the whole set is dropped with it, because an incomplete set is never stored.
+/// With access_scope Group, this `max_samples` does not bound that buffer. A separate limit of
+/// 32 MiB of payload per remote Publisher applies instead, and it is planned to become
+/// configurable by the user.
 ///
 /// # Default
 /// All limits are `LENGTH_UNLIMITED`.
@@ -1804,7 +1793,8 @@ impl QosPolicy for DurabilityQosPolicy {
 #[dds_type(crate_path = "crate", no_default)]
 #[serde(default)]
 pub struct ResourceLimitsQosPolicy {
-    /// Maximum total number of samples that can be stored.
+    /// Maximum total number of samples that can be stored. Twice this value also bounds the
+    /// coherent set buffer a DataReader's samples pass through before they are stored.
     #[serde(deserialize_with = "deserialize_i32_or_unlimited")]
     #[serde(serialize_with = "serialize_i32_or_unlimited")]
     pub max_samples: i32,

@@ -21,6 +21,9 @@ use crate::{
     },
 };
 
+// Payload one remote Publisher may hold for one reader.
+const PUBLISHER_PROXY_BUFFER_BYTES: usize = 32 * 1024 * 1024;
+
 // A sample held for one reader until its group sequence number is released.
 #[derive(Debug)]
 pub(crate) struct PendingSample {
@@ -461,25 +464,125 @@ impl PublisherProxy {
             + self.coherent_pending_changes.values().map(Vec::len).sum::<usize>()
     }
 
-    // Everything this Publisher holds for one reader: waiting for its group position, waiting
+    // Payload bytes this Publisher holds for one reader: waiting for its group position, waiting
     // for its set marker, or waiting for the next flush.
-    fn pending_sample_count_for_reader(&self, reader_id: EntityId) -> usize {
-        // An End Coherent Set is not counted: it is never added to a reader cache.
-        let is_readers = |sample: &&PendingSample| {
-            sample.reader_id == reader_id && !sample.change.is_end_coherent_set()
+    fn pending_bytes_for_reader(&self, reader_id: EntityId) -> usize {
+        self.ready
+            .iter()
+            .chain(self.coherent_pending_changes.values().flatten())
+            .chain(self.ordered_pending_changes.values().flatten())
+            .filter(|sample| Self::is_takeable_by_reader(sample, reader_id))
+            .map(|sample| sample.change.data_value().len())
+            .sum()
+    }
+
+    // Removes the sample this Publisher holds at the lowest group position for one reader and
+    // records that position as empty. False when this Publisher holds nothing for the reader.
+    fn evict_lowest_gsn_pending_sample_for_reader(&mut self, reader_id: EntityId) -> bool {
+        let Some(evicted) = self.take_lowest_gsn_pending_sample_for_reader(reader_id) else {
+            return false;
         };
 
-        self.ready.iter().filter(is_readers).count()
-            + self
-                .ordered_pending_changes
-                .values()
-                .map(|samples| samples.iter().filter(is_readers).count())
-                .sum::<usize>()
-            + self
-                .coherent_pending_changes
-                .values()
-                .map(|members| members.iter().filter(is_readers).count())
-                .sum::<usize>()
+        debug!(
+            "SHC evicted sample {} of reader {} due to buffer limit",
+            evicted.change.sequence_number().to_i64(),
+            reader_id
+        );
+
+        if let Some(group_seq_num) = evicted.change.presentation_info().group_seq_num {
+            self.mark_group_seq_num_passed(evicted.change.writer_guid(), group_seq_num);
+        }
+
+        // A set that lost a member can no longer complete, so its remaining members are discarded.
+        if let Some(group_coherent_set) = evicted.change.presentation_info().group_coherent_set {
+            debug!(
+                "SHC discards group coherent set {} after evicting its member {}",
+                group_coherent_set.to_i64(),
+                evicted.change.sequence_number().to_i64()
+            );
+
+            self.discard_group_coherent_set(group_coherent_set, None);
+        }
+
+        true
+    }
+
+    // Takes the sample this Publisher holds at the lowest group position for one reader. The three
+    // places it holds samples in do not fill in arrival order, so the position decides.
+    fn take_lowest_gsn_pending_sample_for_reader(
+        &mut self,
+        reader_id: EntityId,
+    ) -> Option<PendingSample> {
+        // Finds the lowest group position of every sample this Publisher holds for the reader
+        let lowest_group_seq_num = self
+            .ready
+            .iter()
+            .chain(self.coherent_pending_changes.values().flatten())
+            .chain(self.ordered_pending_changes.values().flatten())
+            .filter(|sample| Self::is_takeable_by_reader(sample, reader_id))
+            .filter_map(|sample| sample.change.presentation_info().group_seq_num)
+            .min()?;
+
+        let is_the_sample = |sample: &PendingSample| {
+            Self::is_takeable_by_reader(sample, reader_id)
+                && sample.change.presentation_info().group_seq_num == Some(lowest_group_seq_num)
+        };
+
+        // Check if ready has the sample with the lowest gsn
+        if let Some(position) = self.ready.iter().position(is_the_sample) {
+            return Some(self.ready.remove(position));
+        }
+
+        // Check if coherent_pending_changes has the sample with the lowest gsn
+        let group_coherent_set = self
+            .coherent_pending_changes
+            .iter()
+            .find(|(_, members)| members.iter().any(is_the_sample))
+            .map(|(group_coherent_set, _)| *group_coherent_set);
+
+        if let Some(group_coherent_set) = group_coherent_set {
+            let members = self.coherent_pending_changes.get_mut(&group_coherent_set)?;
+            let position = members.iter().position(is_the_sample)?;
+            let member = members.remove(position);
+
+            if members.is_empty() {
+                self.coherent_pending_changes.remove(&group_coherent_set);
+            }
+
+            return Some(member);
+        }
+
+        // Check if ordered_pending_changes has the sample with the lowest gsn
+        let samples = self.ordered_pending_changes.get_mut(&lowest_group_seq_num)?;
+        let position = samples.iter().position(is_the_sample)?;
+        let sample = samples.remove(position);
+
+        if samples.is_empty() {
+            self.ordered_pending_changes.remove(&lowest_group_seq_num);
+        }
+
+        Some(sample)
+    }
+
+    // An End Coherent Set belongs to the group cursor rather than to a reader, so it is never taken.
+    fn is_takeable_by_reader(sample: &PendingSample, reader_id: EntityId) -> bool {
+        sample.reader_id == reader_id && !sample.change.is_end_coherent_set()
+    }
+
+    // True once this set was discarded, so none of its members is held any more.
+    fn is_group_coherent_set_discarded(&self, group_coherent_set: GroupCoherentSetId) -> bool {
+        self.highest_discarded_group_coherent_set
+            .is_some_and(|highest| group_coherent_set <= highest)
+    }
+
+    // Records that this writer leaves the given group position empty.
+    fn mark_group_seq_num_passed(&mut self, writer_guid: Guid, group_seq_num: GroupSequenceNumber) {
+        if let Some(writer) = self.writers.get_mut(&writer_guid) {
+            writer.highest_gsn_in_subscriber_history_cache = Some(max(
+                writer.highest_gsn_in_subscriber_history_cache.unwrap_or(SequenceNumber::ZERO),
+                group_seq_num,
+            ));
+        }
     }
 }
 
@@ -489,8 +592,6 @@ impl PublisherProxy {
 pub(crate) struct SubscriberHistoryCache {
     remote_publications: Arc<DashMap<String, HashMap<Guid, PublicationBuiltinTopicData>>>,
     publishers: HashMap<Guid, PublisherProxy>,
-    // What each reader of this Subscriber may hold here, from its RESOURCE_LIMITS max_samples.
-    reader_max_samples: HashMap<EntityId, usize>,
     is_ordered_access: bool,
     is_coherent_access: bool,
     is_access_block_open: bool,
@@ -505,21 +606,10 @@ impl SubscriberHistoryCache {
         Self {
             remote_publications,
             publishers: HashMap::new(),
-            reader_max_samples: HashMap::new(),
             is_ordered_access,
             is_coherent_access,
             is_access_block_open: false,
         }
-    }
-
-    // A reader whose limit is not registered holds without one.
-    pub(crate) fn register_reader(&mut self, reader_id: EntityId, max_samples: usize) {
-        self.reader_max_samples.insert(reader_id, max_samples);
-    }
-
-    // The reader's limit is its own, not one per remote Publisher, so every Publisher counts.
-    fn pending_sample_count_for_reader(&self, reader_id: EntityId) -> usize {
-        self.publishers.values().map(|proxy| proxy.pending_sample_count_for_reader(reader_id)).sum()
     }
 
     // Holds back everything the gate would let through until the block closes.
@@ -554,11 +644,6 @@ impl SubscriberHistoryCache {
             )
         })?;
 
-        let max_samples = self.reader_max_samples.get(&reader_id).copied().unwrap_or(usize::MAX);
-        let pending_sample_count = match max_samples {
-            usize::MAX => 0,
-            _ => self.pending_sample_count_for_reader(reader_id),
-        };
         let group_coherent_set = change.presentation_info().group_coherent_set;
 
         // Without ordered access only a coherent set keeps its group position. A sample outside
@@ -570,10 +655,7 @@ impl SubscriberHistoryCache {
         // A portion that completed after its set was discarded, and the markers of the other
         // writers of that set, arrive here with the group cursor already past them.
         if let Some(group_coherent_set) = group_coherent_set {
-            if proxy
-                .highest_discarded_group_coherent_set
-                .is_some_and(|highest| group_coherent_set <= highest)
-            {
+            if proxy.is_group_coherent_set_discarded(group_coherent_set) {
                 // The End Coherent Set still carries the position the group resumes from, which a
                 // set discarded before it arrived has yet to be told.
                 if change.is_end_coherent_set() {
@@ -590,21 +672,25 @@ impl SubscriberHistoryCache {
             }
         }
 
-        // The reader stores no more than its max_samples, and a set that cannot be stored whole is
-        // discarded. An End Coherent Set is exempt: it is never added to a reader cache.
-        if !change.is_end_coherent_set() && pending_sample_count >= max_samples {
-            debug!(
-                "SHC dropped sample {} for reader {}: it already holds max_samples {}",
-                change.sequence_number().to_i64(),
-                reader_id,
-                max_samples
-            );
+        // This Publisher holds at most PUBLISHER_PROXY_BUFFER_BYTES for one reader. Samples are
+        // evicted from the lowest group position up until this change fits or nothing is left.
+        if !change.is_end_coherent_set() {
+            let payload_len = change.data_value().len();
 
-            if let Some(group_coherent_set) = group_coherent_set {
-                proxy.discard_group_coherent_set(group_coherent_set, None);
+            while proxy.pending_bytes_for_reader(reader_id) + payload_len
+                > PUBLISHER_PROXY_BUFFER_BYTES
+            {
+                if !proxy.evict_lowest_gsn_pending_sample_for_reader(reader_id) {
+                    break;
+                }
+
+                // The eviction discarded the set this change belongs to, so the change is dropped
+                // instead of inserted.
+                if group_coherent_set.is_some_and(|set| proxy.is_group_coherent_set_discarded(set))
+                {
+                    return Ok(());
+                }
             }
-
-            return Ok(());
         }
 
         let mut has_writer_released_this_gsn = false;
@@ -862,8 +948,6 @@ impl SubscriberHistoryCache {
 
     // Drops everything held for a deleted reader. Its share can no longer be committed.
     pub(crate) fn remove_reader(&mut self, reader_id: EntityId) {
-        self.reader_max_samples.remove(&reader_id);
-
         for (publisher_guid, proxy) in self.publishers.iter_mut() {
             let pending_sample_count = proxy.pending_sample_count();
             let writer_count = proxy.writers.len();
@@ -980,12 +1064,21 @@ mod tests {
     }
 
     fn change(writer: Guid, seq: i64, group_seq_num: Option<i64>) -> CacheChange {
+        change_with_payload_len(writer, seq, group_seq_num, 4)
+    }
+
+    fn change_with_payload_len(
+        writer: Guid,
+        seq: i64,
+        group_seq_num: Option<i64>,
+        payload_len: usize,
+    ) -> CacheChange {
         let mut change = CacheChange::new(
             ChangeKind::Alive,
             writer,
             InstanceHandle::default(),
             SequenceNumber::from_i64(seq),
-            vec![0u8; 4],
+            vec![0u8; payload_len],
             None,
         );
         change.set_presentation_info(PresentationInfo {
@@ -1266,7 +1359,17 @@ mod tests {
         group_seq_num: i64,
         group_coherent_set: i64,
     ) -> CacheChange {
-        let mut member = change(writer, seq, Some(group_seq_num));
+        coherent_member_with_payload_len(writer, seq, group_seq_num, group_coherent_set, 4)
+    }
+
+    fn coherent_member_with_payload_len(
+        writer: Guid,
+        seq: i64,
+        group_seq_num: i64,
+        group_coherent_set: i64,
+        payload_len: usize,
+    ) -> CacheChange {
+        let mut member = change_with_payload_len(writer, seq, Some(group_seq_num), payload_len);
         member.set_presentation_info(PresentationInfo {
             group_seq_num: Some(SequenceNumber::from_i64(group_seq_num)),
             group_coherent_set: Some(SequenceNumber::from_i64(group_coherent_set)),
@@ -1520,22 +1623,100 @@ mod tests {
         assert_eq!(released_group_seq_nums(&released), vec![2, 3]);
     }
 
-    // The reader's own RESOURCE_LIMITS bound what may be held for it, so the arrival past that
-    // bound is dropped and what is already held keeps its place.
+    // A Publisher pins a bounded payload for one reader. An arrival past that bound evicts the
+    // sample at the lowest group position, leaving the newest ones in place.
     #[test]
-    fn drops_a_sample_once_the_reader_holds_its_max_samples() {
+    fn evicts_the_lowest_gsn_sample_once_the_reader_fills_its_buffer() {
         let mut cache = cache_with_one_matched_writer();
-        cache.register_reader(reader_id(1), 2);
         set_last_committed_group_seq_num(&mut cache, 9);
 
-        // The hole at 10 holds everything above it.
+        // The hole at 10 holds everything above it. Two samples fill the buffer exactly.
         for (seq, group_seq_num) in [(1, 11), (2, 12), (3, 13)] {
             cache
-                .add_change(reader_id(1), change(writer_guid(1), seq, Some(group_seq_num)), true)
+                .add_change(
+                    reader_id(1),
+                    change_with_payload_len(
+                        writer_guid(1),
+                        seq,
+                        Some(group_seq_num),
+                        PUBLISHER_PROXY_BUFFER_BYTES / 2,
+                    ),
+                    true,
+                )
                 .expect("accepted");
         }
 
-        assert_eq!(pending_group_sequence_numbers(&cache), vec![11, 12]);
+        assert_eq!(pending_group_sequence_numbers(&cache), vec![12, 13]);
+    }
+
+    // The sample at the lowest group position is evicted whatever it is. Evicting a set member
+    // discards its set, which can no longer complete.
+    #[test]
+    fn evicting_a_set_member_takes_its_group_coherent_set_down() {
+        let mut cache = cache_with_one_matched_writer();
+        set_last_committed_group_seq_num(&mut cache, 9);
+
+        cache
+            .add_change(
+                reader_id(1),
+                coherent_member_with_payload_len(
+                    writer_guid(1),
+                    1,
+                    11,
+                    11,
+                    PUBLISHER_PROXY_BUFFER_BYTES,
+                ),
+                true,
+            )
+            .expect("accepted");
+        cache
+            .add_change(reader_id(1), change(writer_guid(1), 2, Some(12)), true)
+            .expect("accepted");
+
+        assert_eq!(pending_group_sequence_numbers(&cache), vec![12], "the newest sample is kept");
+
+        let proxy = &cache.publishers[&publisher_guid()];
+        assert_eq!(
+            proxy.highest_discarded_group_coherent_set,
+            Some(SequenceNumber::from_i64(11)),
+            "the set of the evicted member is discarded"
+        );
+    }
+
+    // A member that already passed the gate waits under its set, so the set is what gets evicted.
+    #[test]
+    fn evicts_a_group_coherent_set_whose_members_passed_the_gate() {
+        let mut cache = cache_with_one_matched_writer();
+        set_last_committed_group_seq_num(&mut cache, 10);
+
+        // The gate hands the member over to its set, where it waits for the marker.
+        cache
+            .add_change(
+                reader_id(1),
+                coherent_member_with_payload_len(
+                    writer_guid(1),
+                    1,
+                    11,
+                    11,
+                    PUBLISHER_PROXY_BUFFER_BYTES,
+                ),
+                true,
+            )
+            .expect("accepted");
+        assert!(cache.flush_pending_changes().is_empty(), "the member waits for the marker");
+
+        cache
+            .add_change(reader_id(1), change(writer_guid(1), 2, Some(12)), true)
+            .expect("accepted");
+
+        assert_eq!(pending_group_sequence_numbers(&cache), vec![12], "the arrival is held");
+
+        let proxy = &cache.publishers[&publisher_guid()];
+        assert_eq!(
+            proxy.highest_discarded_group_coherent_set,
+            Some(SequenceNumber::from_i64(11)),
+            "the set that held the gate-passed member is discarded"
+        );
     }
 
     // The sample written after the set passes the gate on the hole at 11 being declared gone, and
@@ -1576,14 +1757,20 @@ mod tests {
     #[test]
     fn discards_a_group_coherent_set_the_reader_cannot_hold() {
         let mut cache = cache_with_one_matched_writer();
-        cache.register_reader(reader_id(1), 2);
         set_last_committed_group_seq_num(&mut cache, 9);
 
+        // Two members fill the buffer exactly, so the third evicts the first and discards the set.
         for (seq, group_seq_num) in [(1, 11), (2, 12), (3, 13)] {
             cache
                 .add_change(
                     reader_id(1),
-                    coherent_member(writer_guid(1), seq, group_seq_num, 11),
+                    coherent_member_with_payload_len(
+                        writer_guid(1),
+                        seq,
+                        group_seq_num,
+                        11,
+                        PUBLISHER_PROXY_BUFFER_BYTES / 2,
+                    ),
                     true,
                 )
                 .expect("accepted");

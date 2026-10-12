@@ -80,7 +80,10 @@ use crate::{
         builtin::data::content_filtered_topic::ContentFilterProperty,
         common::{guid::Guid, sequence::SequenceNumber, types::ChangeKind},
         entities::{
-            history::{cache_change::CacheChange, history_cache::HistoryCache as _},
+            history::{
+                cache_change::CacheChange, history_cache::HistoryCache as _,
+                reader_history::ReaderHistoryCache,
+            },
             reader::Reader as RtpsReader,
         },
         logic::wlp_logic::LivelinessTransition,
@@ -456,23 +459,18 @@ impl<Foo: 'static + Clone + Debug> EnableChild for DataReader<Foo> {
             rtps_reader
         };
 
+        let buffer_limit =
+            ReaderHistoryCache::buffer_limit_of(self.get_qos_arc()?.resource_limits.max_samples);
+
         // Common: Connect datareader cache to RTPS reader cache
-        let max_samples = {
+        {
             let reader_cache = rtps_reader.reader_cache();
             let mut cache_guard =
                 reader_cache.lock().map_err(|e| DdsError::Error(e.to_string()))?;
             cache_guard.set_datareader_cache(Arc::downgrade(&self.datareader_cache)
                 as Weak<Mutex<dyn DcpsHistoryCache + Send + Sync>>);
 
-            cache_guard.max_samples()
-        };
-
-        // The group order holds this reader's samples before they are stored, under the same limit.
-        if let Some(subscriber_history_cache) = self.get_subscriber()?.subscriber_history_cache()? {
-            subscriber_history_cache
-                .lock()
-                .map_err(|e| DdsError::Error(e.to_string()))?
-                .register_reader(self.guid.entity_id(), max_samples);
+            cache_guard.set_buffer_limit(buffer_limit);
         }
 
         Ok(())
