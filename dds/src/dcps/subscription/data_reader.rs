@@ -145,7 +145,8 @@ pub trait DataReaderBase: DomainEntity + Send + Any {
     fn as_any(&self) -> &dyn Any;
 }
 
-pub(crate) trait DataReaderInternal: DataReaderBase {
+pub(crate) trait DataReaderInternal: DataReaderBase + EnableChild {
+    fn has_rtps_reader(&self) -> bool;
     fn disable(&self) -> DdsResult<()>;
     fn clone_boxed(&self) -> Box<dyn DataReaderBase<Qos = DataReaderQos> + Send>;
     fn notify_data_available(&self);
@@ -4198,6 +4199,10 @@ impl<Foo: 'static + Clone + Debug> DataReaderBase for DataReader<Foo> {
 impl<Foo: 'static + Clone + Debug> DataReaderInternal for DataReader<Foo> {
     fn has_outstanding_loans(&self) -> bool {
         self.outstanding_loan_count() > 0
+    }
+
+    fn has_rtps_reader(&self) -> bool {
+        self.get_rtps_reader().is_ok()
     }
 
     fn disable(&self) -> DdsResult<()> {

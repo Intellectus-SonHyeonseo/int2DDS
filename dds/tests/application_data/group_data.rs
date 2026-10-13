@@ -79,3 +79,81 @@ fn group_data_is_visible_to_remote_endpoints() {
     delete_participant(writer_participant);
     delete_participant(reader_participant);
 }
+
+#[test]
+fn group_data_change_is_visible_to_remote_endpoints() {
+    let domain_id = next_domain_id();
+    let initial_publisher_group_data = b"initial-publisher-group-data".to_vec();
+    let initial_subscriber_group_data = b"initial-subscriber-group-data".to_vec();
+    let changed_publisher_group_data = b"changed-publisher-group-data".to_vec();
+    let changed_subscriber_group_data = b"changed-subscriber-group-data".to_vec();
+
+    let writer_participant = create_participant(domain_id, DomainParticipantQos::default());
+    let reader_participant = create_participant(domain_id, DomainParticipantQos::default());
+
+    let data_writer = create_datawriter(
+        &writer_participant,
+        PublisherQos {
+            group_data: GroupDataQosPolicy { value: initial_publisher_group_data.clone() },
+            ..Default::default()
+        },
+        DataWriterQos::default(),
+    );
+    let data_reader = create_datareader(
+        &reader_participant,
+        SubscriberQos {
+            group_data: GroupDataQosPolicy { value: initial_subscriber_group_data.clone() },
+            ..Default::default()
+        },
+        DataReaderQos::default(),
+    );
+
+    let writer_handle = data_writer.get_instance_handle().unwrap();
+    let reader_handle = data_reader.get_instance_handle().unwrap();
+
+    let is_initial_received = wait_for(|| {
+        let publisher_group_data = matched_publication_group_data(&data_reader, writer_handle)?;
+        let subscriber_group_data = matched_subscription_group_data(&data_writer, reader_handle)?;
+        (publisher_group_data == initial_publisher_group_data
+            && subscriber_group_data == initial_subscriber_group_data)
+            .then_some(())
+    });
+    assert!(is_initial_received.is_some(), "initial group data was not received");
+
+    let publisher = data_writer.get_publisher().unwrap();
+    let mut changed_publisher_qos = publisher.get_qos().unwrap();
+    changed_publisher_qos.group_data =
+        GroupDataQosPolicy { value: changed_publisher_group_data.clone() };
+    publisher.set_qos(changed_publisher_qos).unwrap();
+
+    let subscriber = data_reader.get_subscriber().unwrap();
+    let mut changed_subscriber_qos = subscriber.get_qos().unwrap();
+    changed_subscriber_qos.group_data =
+        GroupDataQosPolicy { value: changed_subscriber_group_data.clone() };
+    subscriber.set_qos(changed_subscriber_qos).unwrap();
+
+    let is_publisher_change_received = wait_for(|| {
+        let group_data = matched_publication_group_data(&data_reader, writer_handle)?;
+        (group_data == changed_publisher_group_data).then_some(())
+    });
+    assert!(
+        is_publisher_change_received.is_some(),
+        "changed publisher group data was not received"
+    );
+
+    let is_subscriber_change_received = wait_for(|| {
+        let group_data = matched_subscription_group_data(&data_writer, reader_handle)?;
+        (group_data == changed_subscriber_group_data).then_some(())
+    });
+    assert!(
+        is_subscriber_change_received.is_some(),
+        "changed subscriber group data was not received"
+    );
+
+    drop(publisher);
+    drop(subscriber);
+    drop(data_writer);
+    drop(data_reader);
+    delete_participant(writer_participant);
+    delete_participant(reader_participant);
+}

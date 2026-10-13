@@ -898,7 +898,7 @@ impl SedpLogic {
 
             // Still compatible - update builtin_topic_data just in case QoS has changed
             // it is idempotent behavior
-            if writer
+            if !writer
                 .matched_reader_lookup(endpoint_guid)
                 .ok_or(RtpsError::new(
                     RtpsErrorCode::MatchedEntityNotFound,
@@ -1070,7 +1070,7 @@ impl SedpLogic {
 
             // Still compatible - update builtin_topic_data just in case QoS has changed
             // it is idempotent behavior
-            if writer
+            if !writer
                 .matched_reader_lookup(endpoint_guid)
                 .ok_or(RtpsError::new(
                     RtpsErrorCode::MatchedEntityNotFound,
@@ -1425,7 +1425,7 @@ impl SedpLogic {
                 return Err(e);
             }
 
-            if reader
+            if !reader
                 .matched_writer_lookup(endpoint_guid)
                 .ok_or(RtpsError::new(
                     RtpsErrorCode::MatchedEntityNotFound,
@@ -1434,7 +1434,7 @@ impl SedpLogic {
                 .publication_builtin_topic_data()
                 .changeable_qos_equals(&publication_builtin_topic_data)
             {
-                // Still compatible - just update builtin_topic_data
+                // Still compatible with changed QoS - update builtin_topic_data
                 debug!(
                     "Syncing publication_builtin_topic_data for compatible remote writer {}",
                     endpoint_guid
@@ -1594,7 +1594,7 @@ impl SedpLogic {
             }
 
             // Still compatible - just update builtin_topic_data
-            if reader
+            if !reader
                 .matched_writer_lookup(endpoint_guid)
                 .ok_or(RtpsError::new(
                     RtpsErrorCode::MatchedEntityNotFound,

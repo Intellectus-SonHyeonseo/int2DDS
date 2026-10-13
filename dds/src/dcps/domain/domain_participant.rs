@@ -2439,7 +2439,7 @@ impl DomainParticipant {
         }
     }
 
-    fn get_publishers(&self) -> DdsResult<Vec<Arc<Publisher>>> {
+    pub(crate) fn get_publishers(&self) -> DdsResult<Vec<Arc<Publisher>>> {
         match self.publishers.lock() {
             Ok(mut publishers) => {
                 let mut valid_publishers = Vec::new();
@@ -2457,7 +2457,7 @@ impl DomainParticipant {
         }
     }
 
-    fn get_subscribers(&self) -> DdsResult<Vec<Arc<Subscriber>>> {
+    pub(crate) fn get_subscribers(&self) -> DdsResult<Vec<Arc<Subscriber>>> {
         match self.subscribers.lock() {
             Ok(mut subscribers) => {
                 let mut valid_subscribers = Vec::new();

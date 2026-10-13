@@ -122,7 +122,7 @@ pub trait DataWriterBase: DomainEntity + Send + Any {
     fn wait_for_acknowledgments(&self, max_wait: Duration) -> DdsResult<()>;
 }
 
-pub(crate) trait DataWriterInternal: DataWriterBase {
+pub(crate) trait DataWriterInternal: DataWriterBase + EnableChild {
     fn has_rtps_writer(&self) -> bool;
     fn disable(&self) -> DdsResult<()>;
     fn clone_boxed(&self) -> Box<dyn DataWriterInternal<Qos = DataWriterQos> + Send>;
