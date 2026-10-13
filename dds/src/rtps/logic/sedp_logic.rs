@@ -1699,10 +1699,7 @@ impl SedpLogic {
         start_time: Option<Instant>,
         duration: StdDuration,
         spdp_discovered_participant_data: Arc<SPDPDiscoveredParticipantData>,
-        data: Option<Arc<Vec<u8>>>,
     ) -> RtpsResult<()> {
-        let data =
-            data.ok_or_else(|| RtpsError::new(RtpsErrorCode::DataNotSet, "Data is not set"))?;
         let participant = self.get_upgraded_participant()?;
         let remote_prefix = spdp_discovered_participant_data.guid_prefix();
 
@@ -1735,6 +1732,10 @@ impl SedpLogic {
             }
             return Ok(());
         }
+
+        let data = self
+            .create_spdp_message()?
+            .ok_or_else(|| RtpsError::new(RtpsErrorCode::DataNotSet, "Data is not set"))?;
 
         for remote_participant_data in filtered_list.iter() {
             if let Err(e) = self.send_to_participant_metatraffic_locators(

@@ -77,6 +77,45 @@ fn participant_user_data_is_visible_to_remote_participant() {
 }
 
 #[test]
+fn participant_user_data_change_is_visible_to_remote_participant() {
+    let domain_id = next_domain_id();
+    let initial_user_data = b"initial-user-data".to_vec();
+    let changed_user_data = b"changed-user-data".to_vec();
+
+    let sending_participant = create_participant(
+        domain_id,
+        DomainParticipantQos {
+            user_data: UserDataQosPolicy { value: initial_user_data.clone() },
+            ..Default::default()
+        },
+    );
+    let receiving_participant = create_participant(domain_id, DomainParticipantQos::default());
+
+    let sending_handle = sending_participant.get_instance_handle().unwrap();
+
+    let is_initial_received = wait_for(|| {
+        let participant_data =
+            receiving_participant.get_discovered_participant_data(sending_handle).ok()?;
+        (participant_data.user_data().value == initial_user_data).then_some(())
+    });
+    assert!(is_initial_received.is_some(), "initial user data was not received");
+
+    let mut changed_qos = sending_participant.get_qos().unwrap();
+    changed_qos.user_data = UserDataQosPolicy { value: changed_user_data.clone() };
+    sending_participant.set_qos(changed_qos).unwrap();
+
+    let is_changed_received = wait_for(|| {
+        let participant_data =
+            receiving_participant.get_discovered_participant_data(sending_handle).ok()?;
+        (participant_data.user_data().value == changed_user_data).then_some(())
+    });
+    assert!(is_changed_received.is_some(), "changed user data was not received");
+
+    delete_participant(sending_participant);
+    delete_participant(receiving_participant);
+}
+
+#[test]
 fn datawriter_user_data_is_visible_to_remote_datareader() {
     let domain_id = next_domain_id();
     let user_data = b"datawriter-user-data".to_vec();
