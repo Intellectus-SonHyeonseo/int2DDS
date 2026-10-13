@@ -24,8 +24,8 @@ use crate::{
     core::time::Duration as DcpsDuration,
     infrastructure::{
         qos_policy::{
-            LivelinessQosPolicy, QosPolicyId, ReliabilityQosPolicyKind,
-            WriterReliabilityExtensionQosPolicy,
+            LivelinessQosPolicy, PresentationQosAccessScopeKind, QosPolicyId,
+            ReliabilityQosPolicyKind, WriterReliabilityExtensionQosPolicy,
         },
         status::{
             OfferedIncompatibleQosStatus, OfferedIncompatibleTypeStatus, PublicationMatchedStatus,
@@ -89,6 +89,7 @@ pub(crate) struct StatefulWriter {
     offered_incompatible_qos_status: Arc<Mutex<OfferedIncompatibleQosStatus>>,
     offered_incompatible_type_status: Arc<Mutex<OfferedIncompatibleTypeStatus>>,
     writer_reliability_extension: WriterReliabilityExtensionQosPolicy,
+    is_group_access_scope: bool,
     // Callback-producing accesses currently in flight against this writer. `remove_writer`
     // drains this to zero before returning.
     in_flight_callbacks: AtomicUsize,
@@ -114,6 +115,8 @@ impl StatefulWriter {
     ) -> Self {
         let writer_reliability_extension =
             *publication_builtin_topic_data.writer_reliability_extension();
+        let is_group_access_scope = publication_builtin_topic_data.presentation().access_scope
+            == PresentationQosAccessScopeKind::Group;
 
         Self {
             guid,
@@ -142,6 +145,7 @@ impl StatefulWriter {
                 OfferedIncompatibleTypeStatus::default(),
             )),
             writer_reliability_extension,
+            is_group_access_scope,
             in_flight_callbacks: AtomicUsize::new(0),
             last_group_seq_num: OnceLock::new(),
             writer_set: OnceLock::new(),
@@ -173,6 +177,11 @@ impl StatefulWriter {
     // Share the publisher's writerSet digest; later calls are ignored.
     pub(crate) fn set_writer_set(&self, writer_set: Arc<RwLock<GroupDigest>>) {
         let _ = self.writer_set.set(writer_set);
+    }
+
+    // True when this writer belongs to a GROUP access scope publisher.
+    pub(crate) fn is_group_access_scope(&self) -> bool {
+        self.is_group_access_scope
     }
 
     // Heartbeat group info for the range first_sn..=last_sn. None when this writer has no

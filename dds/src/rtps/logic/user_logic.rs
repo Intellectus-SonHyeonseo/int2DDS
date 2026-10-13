@@ -808,11 +808,14 @@ impl UserLogic {
                     // firstSN is the oldest held change, not the one resent; the reader drops
                     // below it, including samples this same pass is still repairing.
                     let heartbeat_info = (piggyback && is_last).then(|| {
-                        let group_info =
+                        let group_info = if stateful_writer.is_group_access_scope() {
                             stateful_writer.writer_cache().lock().ok().and_then(|cache| {
                                 stateful_writer
                                     .create_heartbeat_group_info(&cache, first_sn, last_sn)
-                            });
+                            })
+                        } else {
+                            None
+                        };
                         (
                             stateful_writer.heartbeat_count(),
                             first_sn,
@@ -881,6 +884,10 @@ impl UserLogic {
             // One range serves every window the gap list is split into: a later window starts
             // at a higher sequence number, so the bound taken from the lowest one holds there.
             let group_info = gap_list.iter().min().and_then(|lowest_gapped_sn| {
+                if !stateful_writer.is_group_access_scope() {
+                    return None;
+                }
+
                 let writer_cache = stateful_writer.writer_cache();
                 let history_cache = writer_cache.lock().ok()?;
                 stateful_writer.create_gap_group_info(
