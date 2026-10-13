@@ -149,7 +149,7 @@ impl DcpsBridge {
         let metatraffic_unicast_locators = transport.advertised_metatraffic_unicast_locators();
         let default_unicast_locators = transport.advertised_default_unicast_locators();
 
-        let mut participant = Participant::new(
+        let participant = Participant::new(
             domain_id,
             participant_id,
             socket.working_ips(),

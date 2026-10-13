@@ -420,7 +420,11 @@ impl DomainParticipant {
     ) -> DdsResult<Self> {
         let dcps_bridge = DcpsBridge::new(domain_id as u32, &qos.property)
             .map_err(|e| DdsError::Error(e.message))?;
-        let guid = dcps_bridge.get_participant().map_err(|e| DdsError::Error(e.message))?.guid();
+        let rtps_participant =
+            dcps_bridge.get_participant().map_err(|e| DdsError::Error(e.message))?;
+        rtps_participant.set_local_user_data(qos.user_data.clone());
+
+        let guid = rtps_participant.guid();
 
         let mut participant = Self {
             is_builtin,
