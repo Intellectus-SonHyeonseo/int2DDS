@@ -25,7 +25,7 @@ use std::{
     marker::PhantomData,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex, RwLock, Weak,
+        Arc, Mutex, MutexGuard, RwLock, Weak,
     },
 };
 
@@ -1029,8 +1029,9 @@ impl<Foo: 'static + Clone> DataWriter<Foo> {
 
         let rtps_writer = self.get_rtps_writer()?;
         {
-            let _allocation =
-                self.gsn_allocation_lock.lock().map_err(|e| DdsError::Error(e.to_string()))?;
+            let _allocation = self.lock_gsn_allocation()?;
+            let mut coherent_start =
+                self.current_coherent_start.lock().map_err(|e| DdsError::Error(e.to_string()))?;
 
             let seq_num = rtps_writer.allocate_sequence_number();
             loan.change.reset(
@@ -1040,7 +1041,7 @@ impl<Foo: 'static + Clone> DataWriter<Foo> {
                 seq_num,
                 Some(timestamp.into()),
             );
-            self.set_presentation_info(&mut loan.change, seq_num)?;
+            self.set_presentation_info(&mut loan.change, seq_num, &mut coherent_start)?;
         }
 
         unsafe {
@@ -1434,6 +1435,7 @@ impl<Foo: 'static + Clone> DataWriter<Foo> {
         &self,
         change: &mut CacheChange,
         seq_num: SequenceNumber,
+        coherent_start: &mut Option<SequenceNumber>,
     ) -> DdsResult<()> {
         let Some(publisher) = self.publisher.as_ref().and_then(Weak::upgrade) else {
             return Ok(());
@@ -1446,13 +1448,26 @@ impl<Foo: 'static + Clone> DataWriter<Foo> {
         }
 
         if publisher.in_coherent_changes() {
-            let mut start =
-                self.current_coherent_start.lock().map_err(|e| DdsError::Error(e.to_string()))?;
-            presentation_info.coherent_set = Some(*start.get_or_insert(seq_num));
+            presentation_info.coherent_set = Some(*coherent_start.get_or_insert(seq_num));
         }
 
         change.set_presentation_info(presentation_info);
         Ok(())
+    }
+
+    // Lock the publisher's group sequence number allocation under GROUP access scope; None otherwise.
+    fn lock_gsn_allocation(&self) -> DdsResult<Option<MutexGuard<'_, ()>>> {
+        let Some(publisher) = self.publisher.as_ref().and_then(Weak::upgrade) else {
+            return Ok(None);
+        };
+
+        if !publisher.is_group_access_scope()? {
+            return Ok(None);
+        }
+
+        let allocation =
+            self.gsn_allocation_lock.lock().map_err(|e| DdsError::Error(e.to_string()))?;
+        Ok(Some(allocation))
     }
 
     /// DCPS cache length for the `[history-strict]` diagnostics.
@@ -1490,12 +1505,13 @@ impl<Foo: 'static + Clone> DataWriter<Foo> {
 
         // 2. Allocate the sequence number and the group sequence number together
         let seq_num = {
-            let _allocation =
-                self.gsn_allocation_lock.lock().map_err(|e| DdsError::Error(e.to_string()))?;
+            let _allocation = self.lock_gsn_allocation()?;
+            let mut coherent_start =
+                self.current_coherent_start.lock().map_err(|e| DdsError::Error(e.to_string()))?;
 
             let seq_num = rtps_writer.allocate_sequence_number();
             change.reset(kind, rtps_writer.guid(), handle, seq_num, source_timestamp);
-            self.set_presentation_info(&mut change, seq_num)?;
+            self.set_presentation_info(&mut change, seq_num, &mut coherent_start)?;
 
             seq_num
         };
@@ -2588,8 +2604,10 @@ impl<Foo: 'static + Clone> DataWriterInternal for DataWriter<Foo> {
     // Mark the end of this writer's coherent set with a payload-less marker. Under GROUP scope it
     // is an End Coherent Set carrying the group inline QoS, sent even by a writer that wrote nothing.
     fn end_coherent_set(&self, presentation_info: Option<&PresentationInfo>) -> DdsResult<()> {
-        let coherent_set_start =
-            self.current_coherent_start.lock().map_err(|e| DdsError::Error(e.to_string()))?.take();
+        // Held until the marker's sequence number is allocated, so writes order around the marker.
+        let mut coherent_start =
+            self.current_coherent_start.lock().map_err(|e| DdsError::Error(e.to_string()))?;
+        let coherent_set_start = coherent_start.take();
 
         // No open set and no group inline QoS to carry: nothing to mark.
         if coherent_set_start.is_none() && presentation_info.is_none() {
@@ -2608,6 +2626,8 @@ impl<Foo: 'static + Clone> DataWriterInternal for DataWriter<Foo> {
             cache.acquire_change()
         };
         let seq_num = rtps_writer.allocate_sequence_number();
+        drop(coherent_start);
+
         change.reset(
             ChangeKind::Alive,
             rtps_writer.guid(),

@@ -22,7 +22,7 @@ use std::{
     fmt::Debug,
     sync::{
         atomic::{AtomicBool, AtomicI64, AtomicU32, Ordering},
-        Arc, Mutex, RwLock, Weak,
+        Arc, Mutex, MutexGuard, RwLock, Weak,
     },
 };
 
@@ -944,8 +944,7 @@ impl Publisher {
         let _operation = self.lifecycle.begin_operation()?;
 
         // Holds off writes so that the set opens between two group sequence numbers.
-        let _allocation =
-            self.gsn_allocation_lock.lock().map_err(|e| DdsError::Error(e.to_string()))?;
+        let _allocation = self.lock_gsn_allocation()?;
 
         // Nested calls only deepen the current set; a new set starts at depth 0 -> 1.
         let previous_depth = self.coherent_depth.fetch_add(1, Ordering::AcqRel);
@@ -1012,9 +1011,8 @@ impl Publisher {
             return Ok(());
         }
 
-        // Holds off writes on this publisher for the whole close.
-        let _allocation =
-            self.gsn_allocation_lock.lock().map_err(|e| DdsError::Error(e.to_string()))?;
+        // Under GROUP scope, holds off writes on this publisher for the whole close.
+        let _allocation = self.lock_gsn_allocation()?;
 
         // Under GROUP scope every writer's End Coherent Set marker shares one group sequence
         // number and the same group inline QoS; other scopes pass None.
@@ -1061,6 +1059,17 @@ impl Publisher {
 
     pub(crate) fn is_group_access_scope(&self) -> DdsResult<bool> {
         Ok(self.get_qos_arc()?.presentation.access_scope == PresentationQosAccessScopeKind::Group)
+    }
+
+    // Lock the group sequence number allocation under GROUP access scope; None otherwise.
+    fn lock_gsn_allocation(&self) -> DdsResult<Option<MutexGuard<'_, ()>>> {
+        if !self.is_group_access_scope()? {
+            return Ok(None);
+        }
+
+        let allocation =
+            self.gsn_allocation_lock.lock().map_err(|e| DdsError::Error(e.to_string()))?;
+        Ok(Some(allocation))
     }
 
     // True while a coherent set is open (begin called without matching end).
