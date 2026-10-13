@@ -648,6 +648,7 @@ impl<'a> CGen<'a> {
             ResolvedType::U64 => format!("uint64_t {}", name),
             ResolvedType::F32 => format!("float {}", name),
             ResolvedType::F64 => format!("double {}", name),
+            ResolvedType::F128 => format!("Int2DdsFloat128 {}", name),
             ResolvedType::Char => format!("char {}", name),
             ResolvedType::WChar => format!("uint16_t {}", name),
             ResolvedType::String { bound } => match self.opts.string_mode {
@@ -721,6 +722,7 @@ impl<'a> CGen<'a> {
             ResolvedType::U64 => "uint64_t".to_string(),
             ResolvedType::F32 => "float".to_string(),
             ResolvedType::F64 => "double".to_string(),
+            ResolvedType::F128 => "Int2DdsFloat128".to_string(),
             ResolvedType::Char => "char".to_string(),
             ResolvedType::WChar => "uint16_t".to_string(),
             ResolvedType::String { .. } => match self.opts.string_mode {
@@ -982,6 +984,9 @@ impl<'a> CGen<'a> {
             }
             ResolvedType::F64 => {
                 self.raw(&format!("{}int2dds_cdr_write_f64(&w, {});\n", indent, accessor));
+            }
+            ResolvedType::F128 => {
+                self.raw(&format!("{}int2dds_cdr_write_f128(&w, {});\n", indent, accessor));
             }
             ResolvedType::Char => {
                 self.raw(&format!("{}int2dds_cdr_write_u8(&w, (uint8_t){});\n", indent, accessor));
@@ -1264,6 +1269,9 @@ impl<'a> CGen<'a> {
             }
             ResolvedType::F64 => {
                 self.raw(&format!("{}int2dds_cdr_read_f64(&r, &{});\n", indent, accessor));
+            }
+            ResolvedType::F128 => {
+                self.raw(&format!("{}int2dds_cdr_read_f128(&r, &{});\n", indent, accessor));
             }
             ResolvedType::Char => {
                 self.raw(&format!("{}int2dds_cdr_read_u8(&r, (uint8_t*)&{});\n", indent, accessor));
@@ -1677,6 +1685,7 @@ impl<'a> CGen<'a> {
             ResolvedType::U64 => Some("INT2DDS_FIELD_UINT64"),
             ResolvedType::F32 => Some("INT2DDS_FIELD_FLOAT32"),
             ResolvedType::F64 => Some("INT2DDS_FIELD_FLOAT64"),
+            ResolvedType::F128 => Some("INT2DDS_FIELD_FLOAT128"),
             ResolvedType::String { .. } => Some("INT2DDS_FIELD_STRING"),
             ResolvedType::WString { .. } => Some("INT2DDS_FIELD_WSTRING"),
             _ => None,
@@ -1696,6 +1705,7 @@ impl<'a> CGen<'a> {
             ResolvedType::U64 => "u64".to_string(),
             ResolvedType::F32 => "f32".to_string(),
             ResolvedType::F64 => "f64".to_string(),
+            ResolvedType::F128 => "Float128".to_string(),
             ResolvedType::Char => "char".to_string(),
             ResolvedType::WChar => "WChar".to_string(),
             ResolvedType::String { .. } => "String".to_string(),

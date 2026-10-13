@@ -69,6 +69,8 @@
 
 #define INT2DDS_VALUE_KIND_NULL 24
 
+#define INT2DDS_VALUE_KIND_FLOAT128 25
+
 #define INT2DDS_QOS_RELIABILITY_BEST_EFFORT 0
 
 #define INT2DDS_QOS_RELIABILITY_RELIABLE 1
@@ -199,6 +201,11 @@
 #define INT2DDS_FIELD_ARRAY 18
 
 #define INT2DDS_FIELD_MAP 19
+
+/**
+ * Appended after the composite codes so existing values keep their numbers.
+ */
+#define INT2DDS_FIELD_FLOAT128 20
 
 #define INT2DDS_MEMBER_KEY (1 << 0)
 
@@ -2021,6 +2028,45 @@ Int2DdsRet int2dds_dynamic_data_create(const struct Int2DdsDynamicTypeSupport *t
                                        struct Int2DdsDynamicData **out);
 
 /**
+ * Read a float128 field from a sample buffer into `out` (16 bytes, little-endian binary128).
+ *
+ * # Safety
+ * - `bytes` must point to at least `len` readable bytes
+ * - `type_obj` must be a valid TypeObject handle
+ * - `field_name` must be a valid null-terminated C string
+ * - `out` must point to 16 writable bytes
+ */
+Int2DdsRet int2dds_dynamic_sample_get_f128(const uint8_t *bytes,
+                                           uintptr_t len,
+                                           const struct Int2DdsTypeObject *type_obj,
+                                           const char *field_name,
+                                           uint8_t *out);
+
+/**
+ * Read a float128 field into `out` (16 bytes, little-endian binary128).
+ *
+ * # Safety
+ * - `data` must be a valid DynamicData handle
+ * - `field_path` must be a valid null-terminated C string
+ * - `out` must point to 16 writable bytes
+ */
+Int2DdsRet int2dds_dynamic_data_get_f128(const struct Int2DdsDynamicData *data,
+                                         const char *field_path,
+                                         uint8_t *out);
+
+/**
+ * Set a top-level float128 field from `value` (16 bytes, little-endian binary128).
+ *
+ * # Safety
+ * - `data` must be a valid DynamicData handle
+ * - `field` must be a valid null-terminated C string
+ * - `value` must point to 16 readable bytes
+ */
+Int2DdsRet int2dds_dynamic_data_set_f128(struct Int2DdsDynamicData *data,
+                                         const char *field,
+                                         const uint8_t *value);
+
+/**
  * Set a char8 field (given as its byte value) on a top-level field.
  *
  * # Safety
@@ -2225,6 +2271,50 @@ Int2DdsRet int2dds_dynamic_data_get_value(const struct Int2DdsDynamicData *data,
  * - `out` must be a valid pointer
  */
 Int2DdsRet int2dds_dynamic_value_kind(const struct Int2DdsDynamicValue *value, int32_t *out);
+
+/**
+ * Construct a float128 value from `value` (16 bytes, little-endian binary128).
+ *
+ * # Safety
+ * - `value` must point to 16 readable bytes
+ * - `out` must be a valid pointer to a null pointer
+ */
+Int2DdsRet int2dds_dynamic_value_f128(const uint8_t *value, struct Int2DdsDynamicValue **out);
+
+/**
+ * Read a value as float128 into `out` (16 bytes, little-endian binary128).
+ *
+ * # Safety
+ * - `value` must be a valid value handle
+ * - `out` must point to 16 writable bytes
+ */
+Int2DdsRet int2dds_dynamic_value_as_f128(const struct Int2DdsDynamicValue *value, uint8_t *out);
+
+/**
+ * Parse a decimal literal into `out` (16 bytes, little-endian binary128), correctly rounded.
+ *
+ * # Safety
+ * - `text` must be a valid null-terminated C string
+ * - `out` must point to 16 writable bytes
+ */
+Int2DdsRet int2dds_float128_parse(const char *text, uint8_t *out);
+
+/**
+ * Widen `value` exactly into `out` (16 bytes, little-endian binary128).
+ *
+ * # Safety
+ * - `out` must point to 16 writable bytes
+ */
+Int2DdsRet int2dds_float128_from_f64(double value, uint8_t *out);
+
+/**
+ * Narrow `value` (16 bytes, little-endian binary128) to the nearest double.
+ *
+ * # Safety
+ * - `value` must point to 16 readable bytes
+ * - `out` must be a valid pointer
+ */
+Int2DdsRet int2dds_float128_to_f64(const uint8_t *value, double *out);
 
 /**
  * Read a char8 value as its byte value.

@@ -10,7 +10,7 @@ from enum import IntEnum
 from typing import TYPE_CHECKING, Iterator
 
 if TYPE_CHECKING:
-    pass
+    from int2dds.cdr.float128 import Float128
 
 
 class Extensibility(IntEnum):
@@ -185,6 +185,11 @@ class CdrWriter:
         self._align(4 if self._xcdr2 else 8)
         fmt = "<d" if self._le else ">d"
         self._buf.extend(struct.pack(fmt, val))
+
+    def write_f128(self, val: Float128) -> None:
+        """Write an IEEE binary128 (``float128``)."""
+        self._align(4 if self._xcdr2 else 8)
+        self._buf.extend(val.to_bytes(self._le))
 
     def write_char(self, val: str) -> None:
         """Write a single character (1 byte)."""

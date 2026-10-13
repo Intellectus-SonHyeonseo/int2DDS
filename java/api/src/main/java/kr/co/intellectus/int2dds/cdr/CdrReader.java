@@ -199,6 +199,18 @@ public final class CdrReader {
         return Double.longBitsToDouble(readI64());
     }
 
+    /** Reads an IEEE binary128 ({@code float128}) with 8-byte alignment. */
+    public Float128 readF128() {
+        align(8);
+        require(16);
+        long first = data.getLong(pos);
+        long second = data.getLong(pos + 8);
+        pos += 16;
+        return data.order() == ByteOrder.LITTLE_ENDIAN
+                ? new Float128(first, second)
+                : new Float128(second, first);
+    }
+
     // ---- strings, sequences, raw bytes -----------------------------------
 
     private static final java.nio.charset.Charset UTF8 = java.nio.charset.Charset.forName("UTF-8");

@@ -78,6 +78,8 @@ pub use core::{
     to_bytes_u64,
     BufferManager,
     DeserializerReader,
+    Float128,
+    ParseFloat128Error,
     SerializationError,
     WChar,
     WString,

@@ -237,6 +237,19 @@ namespace Int2Dds.Cdr
             }
         }
 
+        /// <summary>Read an IEEE binary128 (<c>float128</c>) with 8-byte alignment.</summary>
+        public Float128 ReadF128()
+        {
+            Align(8);
+            EnsureRemaining(16);
+            var span = _data.AsSpan(_pos);
+            Float128 value = _littleEndian
+                ? new Float128(BinaryPrimitives.ReadUInt64LittleEndian(span), BinaryPrimitives.ReadUInt64LittleEndian(span.Slice(8)))
+                : new Float128(BinaryPrimitives.ReadUInt64BigEndian(span.Slice(8)), BinaryPrimitives.ReadUInt64BigEndian(span));
+            _pos += 16;
+            return value;
+        }
+
         /// <summary>Read a 64-bit double with 8-byte alignment.</summary>
         public double ReadF64()
         {

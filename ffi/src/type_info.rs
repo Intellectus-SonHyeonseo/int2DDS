@@ -61,6 +61,8 @@ pub const INT2DDS_FIELD_NESTED: i32 = 16;
 pub const INT2DDS_FIELD_SEQUENCE: i32 = 17;
 pub const INT2DDS_FIELD_ARRAY: i32 = 18;
 pub const INT2DDS_FIELD_MAP: i32 = 19;
+/// Appended after the composite codes so existing values keep their numbers.
+pub const INT2DDS_FIELD_FLOAT128: i32 = 20;
 pub const INT2DDS_MEMBER_KEY: i32 = 1 << 0;
 pub const INT2DDS_MEMBER_OPTIONAL: i32 = 1 << 1;
 pub const INT2DDS_MEMBER_MUST_UNDERSTAND: i32 = 1 << 2;
@@ -560,6 +562,7 @@ fn field_type_to_type_identifier(field_type: i32) -> Option<TypeIdentifier> {
         INT2DDS_FIELD_UINT64 => Some(TypeIdentifier::Uint64),
         INT2DDS_FIELD_FLOAT32 => Some(TypeIdentifier::Float32),
         INT2DDS_FIELD_FLOAT64 => Some(TypeIdentifier::Float64),
+        INT2DDS_FIELD_FLOAT128 => Some(TypeIdentifier::Float128),
         INT2DDS_FIELD_STRING => Some(TypeIdentifier::String8),
         INT2DDS_FIELD_WSTRING => Some(TypeIdentifier::String16),
         _ => None,

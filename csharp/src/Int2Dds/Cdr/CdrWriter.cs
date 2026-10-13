@@ -255,6 +255,25 @@ namespace Int2Dds.Cdr
             }
         }
 
+        /// <summary>Write an IEEE binary128 (<c>float128</c>) with 8-byte alignment.</summary>
+        public void WriteF128(Float128 value)
+        {
+            Align(8);
+            EnsureCapacity(16);
+            var span = _buffer.AsSpan(_pos);
+            if (_littleEndian)
+            {
+                BinaryPrimitives.WriteUInt64LittleEndian(span, value.Lo);
+                BinaryPrimitives.WriteUInt64LittleEndian(span.Slice(8), value.Hi);
+            }
+            else
+            {
+                BinaryPrimitives.WriteUInt64BigEndian(span, value.Hi);
+                BinaryPrimitives.WriteUInt64BigEndian(span.Slice(8), value.Lo);
+            }
+            _pos += 16;
+        }
+
         /// <summary>Write a 64-bit double with 8-byte alignment.</summary>
         public void WriteF64(double value)
         {

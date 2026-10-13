@@ -979,6 +979,7 @@ impl<'a> CsGen<'a> {
             ResolvedType::U64 => "ulong".to_string(),
             ResolvedType::F32 => "float".to_string(),
             ResolvedType::F64 => "double".to_string(),
+            ResolvedType::F128 => "Float128".to_string(),
             ResolvedType::Char => "char".to_string(),
             ResolvedType::WChar => "char".to_string(),
             ResolvedType::String { .. } => "string".to_string(),
@@ -1040,6 +1041,7 @@ impl<'a> CsGen<'a> {
             ResolvedType::I64 | ResolvedType::U64 => "0".to_string(),
             ResolvedType::F32 => "0.0f".to_string(),
             ResolvedType::F64 => "0.0".to_string(),
+            ResolvedType::F128 => "default(Float128)".to_string(),
             ResolvedType::Char => "'\\0'".to_string(),
             ResolvedType::WChar => "'\\0'".to_string(),
             ResolvedType::String { .. } => "\"\"".to_string(),
@@ -1141,6 +1143,7 @@ impl<'a> CsGen<'a> {
             ResolvedType::U64 => self.line(&format!("w.WriteU64({});", accessor)),
             ResolvedType::F32 => self.line(&format!("w.WriteF32({});", accessor)),
             ResolvedType::F64 => self.line(&format!("w.WriteF64({});", accessor)),
+            ResolvedType::F128 => self.line(&format!("w.WriteF128({});", accessor)),
             ResolvedType::Char => {
                 self.line(&format!("w.WriteU8((byte){});", accessor));
             }
@@ -1493,6 +1496,9 @@ impl<'a> CsGen<'a> {
             ResolvedType::F64 => {
                 self.line(&format!("{}.{} = r.ReadF64();", obj, name));
             }
+            ResolvedType::F128 => {
+                self.line(&format!("{}.{} = r.ReadF128();", obj, name));
+            }
             ResolvedType::Char => {
                 self.line(&format!("{}.{} = (char)r.ReadU8();", obj, name));
             }
@@ -1630,6 +1636,9 @@ impl<'a> CsGen<'a> {
             }
             ResolvedType::F64 => {
                 self.line(&format!("var {} = r.ReadF64();", var_name));
+            }
+            ResolvedType::F128 => {
+                self.line(&format!("var {} = r.ReadF128();", var_name));
             }
             ResolvedType::Char => {
                 self.line(&format!("var {} = (char)r.ReadU8();", var_name));

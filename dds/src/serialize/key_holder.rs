@@ -14,7 +14,7 @@ use crate::serialize::cdr::{
     Xcdr2Deserializer, Xcdr2Serializer, XcdrDeserialize, XcdrResult, XcdrSerialize,
 };
 use crate::serialize::core::SerializationError;
-use crate::serialize::WString;
+use crate::serialize::{Float128, WString};
 
 /// Projection of a value into its RTPS KeyHash key-holder form.
 pub trait KeyHolder {
@@ -170,6 +170,7 @@ impl_leaf_key_holder!(
     i64 => 8,
     f32 => 4,
     f64 => 8,
+    Float128 => 16,
     char => 1,
 );
 

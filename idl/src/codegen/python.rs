@@ -61,7 +61,10 @@ impl<'a> PyGen<'a> {
         self.line("from enum import IntEnum, IntFlag");
         self.line("from typing import ClassVar");
         self.line("");
-        self.line(&format!("from {}.cdr import CdrReader, CdrWriter, Extensibility", module_name));
+        self.line(&format!(
+            "from {}.cdr import CdrReader, CdrWriter, Extensibility, Float128",
+            module_name
+        ));
         self.line("");
         self.emit_cross_file_imports();
         self.line("");
@@ -876,6 +879,7 @@ impl<'a> PyGen<'a> {
             ResolvedType::I32 | ResolvedType::U32 => "int".to_string(),
             ResolvedType::I64 | ResolvedType::U64 => "int".to_string(),
             ResolvedType::F32 | ResolvedType::F64 => "float".to_string(),
+            ResolvedType::F128 => "Float128".to_string(),
             ResolvedType::Char => "str".to_string(),
             ResolvedType::String { .. } => "str".to_string(),
             ResolvedType::Sequence { element, .. } => {
@@ -905,6 +909,8 @@ impl<'a> PyGen<'a> {
             ResolvedType::I32 | ResolvedType::U32 => "0".to_string(),
             ResolvedType::I64 | ResolvedType::U64 => "0".to_string(),
             ResolvedType::F32 | ResolvedType::F64 => "0.0".to_string(),
+            // Hashable, so a plain dataclass default is allowed and also works as an array element.
+            ResolvedType::F128 => "Float128()".to_string(),
             ResolvedType::Char => "\"\"".to_string(),
             ResolvedType::String { .. } => "\"\"".to_string(),
             ResolvedType::Sequence { .. } => "field(default_factory=list)".to_string(),
@@ -1299,6 +1305,7 @@ impl<'a> PyGen<'a> {
             ResolvedType::U64 => self.line(&format!("w.write_u64({})", accessor)),
             ResolvedType::F32 => self.line(&format!("w.write_f32({})", accessor)),
             ResolvedType::F64 => self.line(&format!("w.write_f64({})", accessor)),
+            ResolvedType::F128 => self.line(&format!("w.write_f128({})", accessor)),
             ResolvedType::Char => self.line(&format!("w.write_char({})", accessor)),
             ResolvedType::String { .. } => self.line(&format!("w.write_string({})", accessor)),
             ResolvedType::Enum(_) => self.line(&format!("w.write_enum(int({}))", accessor)),
@@ -1573,6 +1580,7 @@ impl<'a> PyGen<'a> {
             ResolvedType::U64 => self.line(&format!("{} = r.read_u64()", name)),
             ResolvedType::F32 => self.line(&format!("{} = r.read_f32()", name)),
             ResolvedType::F64 => self.line(&format!("{} = r.read_f64()", name)),
+            ResolvedType::F128 => self.line(&format!("{} = r.read_f128()", name)),
             ResolvedType::Char => self.line(&format!("{} = r.read_char()", name)),
             ResolvedType::String { .. } => self.line(&format!("{} = r.read_string()", name)),
             ResolvedType::Enum(enum_name) => {

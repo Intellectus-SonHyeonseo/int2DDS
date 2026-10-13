@@ -291,6 +291,15 @@ public final class CdrWriter implements AutoCloseable {
         writeI64(Double.doubleToRawLongBits(value));
     }
 
+    /** Writes an IEEE binary128 ({@code float128}) with 8-byte alignment. */
+    public void writeF128(Float128 value) {
+        align(8);
+        ensure(16);
+        pooled.buffer.putLong(pos, littleEndian ? value.lo() : value.hi());
+        pooled.buffer.putLong(pos + 8, littleEndian ? value.hi() : value.lo());
+        pos += 16;
+    }
+
     // ---- strings, sequences, raw bytes -----------------------------------
 
     /**

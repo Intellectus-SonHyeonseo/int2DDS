@@ -14,7 +14,7 @@ use crate::serialize::cdr::{
     CdrDeserializer, CdrError, CdrSerializer, ExtensibilityKind, PlCdrMemberHeader,
     PrimitiveSerialize, StringSerialize, Xcdr2Deserializer, Xcdr2Serializer,
 };
-use crate::serialize::{BufferManager, DeserializerReader};
+use crate::serialize::{BufferManager, DeserializerReader, Float128};
 
 use super::dynamic_data::{DynamicData, DynamicValue};
 use super::dynamic_type::{
@@ -34,7 +34,7 @@ trait ValueDeserializer {
     fn deserialize_u64(&mut self) -> Result<u64, CdrError>;
     fn deserialize_f32(&mut self) -> Result<f32, CdrError>;
     fn deserialize_f64(&mut self) -> Result<f64, CdrError>;
-    fn deserialize_f128(&mut self) -> Result<f64, CdrError>;
+    fn deserialize_f128(&mut self) -> Result<Float128, CdrError>;
     fn deserialize_string(&mut self) -> Result<String, CdrError>;
     fn deserialize_wstring16(&mut self) -> Result<String, CdrError>;
 }
@@ -84,7 +84,7 @@ impl ValueDeserializer for CdrDeserializer<'_> {
         CdrDeserializer::deserialize_f64(self)
     }
 
-    fn deserialize_f128(&mut self) -> Result<f64, CdrError> {
+    fn deserialize_f128(&mut self) -> Result<Float128, CdrError> {
         CdrDeserializer::deserialize_f128(self)
     }
 
@@ -142,7 +142,7 @@ impl ValueDeserializer for Xcdr2Deserializer<'_> {
         Xcdr2Deserializer::deserialize_f64(self)
     }
 
-    fn deserialize_f128(&mut self) -> Result<f64, CdrError> {
+    fn deserialize_f128(&mut self) -> Result<Float128, CdrError> {
         Xcdr2Deserializer::deserialize_f128(self)
     }
 
@@ -437,11 +437,18 @@ where
         DynamicValue::Uint32(v) => serializer.serialize_u32(*v).map_err(cdr_error),
         DynamicValue::Uint64(v) => serializer.serialize_u64(*v).map_err(cdr_error),
         DynamicValue::Float32(v) => serializer.serialize_f32(*v).map_err(cdr_error),
+        // An f64 set on a float128 member is widened exactly, so existing f64 setters keep working.
         DynamicValue::Float64(v) => match resolved_kind(type_kind) {
             DynamicTypeKind::Primitive(PrimitiveKind::Float128) => {
-                serializer.serialize_f128(*v).map_err(cdr_error)
+                serializer.serialize_f128(Float128::from(*v)).map_err(cdr_error)
             }
             _ => serializer.serialize_f64(*v).map_err(cdr_error),
+        },
+        DynamicValue::Float128(v) => match resolved_kind(type_kind) {
+            DynamicTypeKind::Primitive(PrimitiveKind::Float64) => {
+                serializer.serialize_f64(v.to_f64()).map_err(cdr_error)
+            }
+            _ => serializer.serialize_f128(*v).map_err(cdr_error),
         },
         DynamicValue::Char8(v) => match resolved_kind(type_kind) {
             DynamicTypeKind::Primitive(PrimitiveKind::Char16) => {
@@ -935,7 +942,7 @@ where
             Ok(DynamicValue::Float64(deserializer.deserialize_f64().map_err(cdr_error)?))
         }
         PrimitiveKind::Float128 => {
-            Ok(DynamicValue::Float64(deserializer.deserialize_f128().map_err(cdr_error)?))
+            Ok(DynamicValue::Float128(deserializer.deserialize_f128().map_err(cdr_error)?))
         }
         PrimitiveKind::Char8 => {
             Ok(DynamicValue::Char8(deserializer.deserialize_u8().map_err(cdr_error)? as char))

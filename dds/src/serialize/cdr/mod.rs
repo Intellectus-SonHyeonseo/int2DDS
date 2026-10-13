@@ -5,7 +5,7 @@ pub mod serializer;
 pub mod xcdr1;
 pub mod xcdr2;
 
-use crate::serialize::core::{SerializationError, SerializationResult};
+use crate::serialize::core::{Float128, SerializationError, SerializationResult};
 
 // Re-export v1 (CDR) types
 pub use xcdr1::{CdrDeserializer, CdrSerializer, PlCdrMemberHeader};
@@ -212,6 +212,7 @@ crate::impl_primitive_serialization!(
         i64 => (serialize_i64, deserialize_i64),
         f32 => (serialize_f32, deserialize_f32),
         f64 => (serialize_f64, deserialize_f64),
+        Float128 => (serialize_f128, deserialize_f128),
         char => (serialize_char, deserialize_char)
     }
 );
@@ -312,6 +313,7 @@ crate::impl_primitive_serialization!(
         i64 => (serialize_i64, deserialize_i64),
         f32 => (serialize_f32, deserialize_f32),
         f64 => (serialize_f64, deserialize_f64),
+        Float128 => (serialize_f128, deserialize_f128),
         char => (serialize_char, deserialize_char)
     }
 );

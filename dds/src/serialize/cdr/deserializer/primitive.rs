@@ -2,7 +2,7 @@ use crate::serialize::cdr::{CdrDeserializer, CdrError, Xcdr2Deserializer};
 
 use crate::serialize::{
     from_bytes_f128, from_bytes_f32, from_bytes_f64, from_bytes_i16, from_bytes_i32,
-    from_bytes_i64, from_bytes_u16, from_bytes_u32, from_bytes_u64,
+    from_bytes_i64, from_bytes_u16, from_bytes_u32, from_bytes_u64, Float128,
 };
 
 impl<'a> CdrDeserializer<'a> {
@@ -131,7 +131,7 @@ impl<'a> CdrDeserializer<'a> {
 
     /// Deserialize 128-bit floating point (IEEE binary128 on the wire)
     #[inline]
-    pub fn deserialize_f128(&mut self) -> Result<f64, CdrError> {
+    pub fn deserialize_f128(&mut self) -> Result<Float128, CdrError> {
         self.align(8);
         self.check_available(16)?;
 
@@ -279,7 +279,7 @@ impl<'a> Xcdr2Deserializer<'a> {
 
     /// Deserialize 128-bit floating point (IEEE binary128 on the wire)
     #[inline]
-    pub fn deserialize_f128(&mut self) -> Result<f64, CdrError> {
+    pub fn deserialize_f128(&mut self) -> Result<Float128, CdrError> {
         self.align(8);
         self.check_available(16)?;
         let mut bytes = [0u8; 16];

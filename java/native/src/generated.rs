@@ -3862,6 +3862,27 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1dynamic_1data_1get_1f128<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    data: jlong,
+    field_path: JByteArray<'local>,
+    out: jlong,
+) -> jint {
+    let field_path_buf = crate::generated_support::take_bytes(&mut env, &field_path);
+    let __ret = unsafe {
+        int2dds_ffi::dynamic::int2dds_dynamic_data_get_f128(
+            data as usize as *const _,
+            crate::generated_support::ptr_or_null(&field_path_buf) as _,
+            out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1dynamic_1data_1get_1f32<
     'local,
 >(
@@ -4198,6 +4219,27 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
             data as usize as *mut _,
             crate::generated_support::ptr_or_null(&field_buf) as _,
             value as _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1dynamic_1data_1set_1f128<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    data: jlong,
+    field: JByteArray<'local>,
+    value: jlong,
+) -> jint {
+    let field_buf = crate::generated_support::take_bytes(&mut env, &field);
+    let __ret = unsafe {
+        int2dds_ffi::dynamic::int2dds_dynamic_data_set_f128(
+            data as usize as *mut _,
+            crate::generated_support::ptr_or_null(&field_buf) as _,
+            value as usize as *const _,
         )
     };
     __ret as _
@@ -4617,6 +4659,31 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1dynamic_1sample_1get_1f128<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    bytes: jlong,
+    len: jlong,
+    type_obj: jlong,
+    field_name: JByteArray<'local>,
+    out: jlong,
+) -> jint {
+    let field_name_buf = crate::generated_support::take_bytes(&mut env, &field_name);
+    let __ret = unsafe {
+        int2dds_ffi::dynamic::int2dds_dynamic_sample_get_f128(
+            bytes as usize as *const _,
+            len as _,
+            type_obj as usize as *const _,
+            crate::generated_support::ptr_or_null(&field_name_buf) as _,
+            out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1dynamic_1sample_1get_1f32<
     'local,
 >(
@@ -5020,6 +5087,24 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1dynamic_1value_1as_1f128<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    value: jlong,
+    out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::dynamic_value::int2dds_dynamic_value_as_f128(
+            value as usize as *const _,
+            out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1dynamic_1value_1as_1f32<
     'local,
 >(
@@ -5365,6 +5450,24 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
         int2dds_ffi::dynamic_value::int2dds_dynamic_value_enum(
             crate::generated_support::ptr_or_null(&name_buf) as _,
             value as _,
+            out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1dynamic_1value_1f128<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    value: jlong,
+    out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::dynamic_value::int2dds_dynamic_value_f128(
+            value as usize as *const _,
             out as usize as *mut _,
         )
     };
@@ -5923,6 +6026,58 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
         int2dds_ffi::env::int2dds_env_set_qos_profile(crate::generated_support::ptr_or_null(
             &path_buf,
         ) as _)
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1float128_1from_1f64<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    value: jdouble,
+    out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::dynamic_value::int2dds_float128_from_f64(value as _, out as usize as *mut _)
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1float128_1parse<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    text: JByteArray<'local>,
+    out: jlong,
+) -> jint {
+    let text_buf = crate::generated_support::take_bytes(&mut env, &text);
+    let __ret = unsafe {
+        int2dds_ffi::dynamic_value::int2dds_float128_parse(
+            crate::generated_support::ptr_or_null(&text_buf) as _,
+            out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1float128_1to_1f64<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    value: jlong,
+    out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::dynamic_value::int2dds_float128_to_f64(
+            value as usize as *const _,
+            out as usize as *mut _,
+        )
     };
     __ret as _
 }

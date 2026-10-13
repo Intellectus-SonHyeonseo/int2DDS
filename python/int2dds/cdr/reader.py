@@ -7,6 +7,8 @@ from __future__ import annotations
 import struct
 from typing import TYPE_CHECKING
 
+from int2dds.cdr.float128 import Float128
+
 if TYPE_CHECKING:
     pass
 
@@ -254,6 +256,14 @@ class CdrReader:
         fmt = "<d" if self._le else ">d"
         val = struct.unpack_from(fmt, self._buf, self._pos)[0]
         self._pos += 8
+        return val
+
+    def read_f128(self) -> Float128:
+        """Read an IEEE binary128 (``float128``)."""
+        self._align(4 if self._xcdr2 else 8)
+        self._ensure(16)
+        val = Float128.from_bytes(self._buf[self._pos : self._pos + 16], self._le)
+        self._pos += 16
         return val
 
     def read_char(self) -> str:
