@@ -71,6 +71,14 @@ impl<'a> DataFrag<'a> {
         }
     }
 
+    pub(crate) fn inline_qos(&self) -> Option<ParameterList> {
+        self.inline_qos.clone()
+    }
+
+    pub(crate) fn set_inline_qos_list(&mut self, param_list: ParameterList) {
+        self.inline_qos = Some(param_list);
+    }
+
     pub(crate) fn add_serialized_data(&mut self, serialized_data: SubmessagePayload<'a>) {
         self.serialized_data = serialized_data;
     }
@@ -345,6 +353,8 @@ pub(crate) struct FragmentBuffer {
     pub total_fragments: u32,
     pub fragment_size: u16,
     pub source_timestamp: Option<RtpsTime>,
+    // Inline QoS of the sample, carried only by its first fragment.
+    pub inline_qos: Option<ParameterList>,
     pub created_at: Instant,
     pub last_updated: Instant,
 }
@@ -373,6 +383,7 @@ impl FragmentBuffer {
             total_fragments,
             fragment_size,
             source_timestamp: None,
+            inline_qos: None,
             created_at: now,
             last_updated: now,
         })
