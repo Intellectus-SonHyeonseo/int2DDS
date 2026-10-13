@@ -126,7 +126,7 @@ impl DomainParticipantFactory {
         listener: Option<Arc<dyn DomainParticipantListener>>,
         mask: StatusMask,
     ) -> DdsResult<DomainParticipant> {
-        crate::common::enterprise_hooks::call_participant_gate()?;
+        crate::common::enterprise_loader::participant_gate()?;
         let domain_id = if domain_id != DEFAULT_DOMAIN_ID {
             domain_id
         } else {
@@ -803,18 +803,25 @@ mod factory_test {
 
     #[test]
     fn test_delete_participant() {
+        // A fixed id can be handed to a concurrently running test by unique_domain_id().
+        let domain_id = crate::test_utils::unique_domain_id();
         let factory = DomainParticipantFactory::get_instance();
         let participant = factory
-            .create_participant(10, DomainParticipantQos::default(), None, StatusMask::default())
+            .create_participant(
+                domain_id,
+                DomainParticipantQos::default(),
+                None,
+                StatusMask::default(),
+            )
             .unwrap();
 
-        let result = factory.lookup_participant(10).unwrap();
+        let result = factory.lookup_participant(domain_id).unwrap();
         assert!(result.is_some(), "is None");
 
         let result = factory.delete_participant(participant);
         println!("{:?}", result);
         assert_eq!(result, Ok(()));
-        let result = factory.lookup_participant(10).unwrap();
+        let result = factory.lookup_participant(domain_id).unwrap();
         assert!(result.is_none(), "is not None");
     }
 
