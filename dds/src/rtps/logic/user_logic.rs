@@ -2383,10 +2383,14 @@ impl UserLogic {
             }
         }
 
+        // A sample without a group sequence number has no group position and is stored as under
+        // TOPIC access scope.
+        let has_group_seq_num = change.presentation_info().group_seq_num.is_some();
         let subscriber_history_cache = reader
             .as_any()
             .downcast_ref::<StatefulReader>()
-            .and_then(StatefulReader::subscriber_history_cache);
+            .and_then(StatefulReader::subscriber_history_cache)
+            .filter(|_| has_group_seq_num);
 
         let reader_cache = reader.reader_cache();
         let mut cache_guard = reader_cache
@@ -2442,10 +2446,13 @@ impl UserLogic {
         marker: CacheChange,
         group_coherent_set: SequenceNumber,
     ) -> RtpsResult<()> {
+        // A marker without a group sequence number closes the set as under TOPIC access scope.
+        let has_group_seq_num = marker.presentation_info().group_seq_num.is_some();
         let subscriber_history_cache = reader
             .as_any()
             .downcast_ref::<StatefulReader>()
-            .and_then(StatefulReader::subscriber_history_cache);
+            .and_then(StatefulReader::subscriber_history_cache)
+            .filter(|_| has_group_seq_num);
 
         let reader_cache = reader.reader_cache();
         let mut cache_guard = reader_cache
@@ -6738,13 +6745,24 @@ mod tests {
         sequence_number: i64,
         group_seq_num: i64,
     ) {
+        let mut inline_qos = ParameterList::default();
+        inline_qos.set_group_seq_num(SequenceNumber::from_i64(group_seq_num));
+
+        feed_data(user_logic, participant_prefix, writer_guid, sequence_number, inline_qos);
+    }
+
+    fn feed_data(
+        user_logic: &mut UserLogic,
+        participant_prefix: GuidPrefix,
+        writer_guid: Guid,
+        sequence_number: i64,
+        inline_qos: ParameterList,
+    ) {
         let mut data = Data::new(
             EntityId::UNKNOWN,
             writer_guid.entity_id(),
             SequenceNumber::from_i64(sequence_number),
         );
-        let mut inline_qos = ParameterList::default();
-        inline_qos.set_group_seq_num(SequenceNumber::from_i64(group_seq_num));
         data.set_inline_qos_list(inline_qos);
         data.add_serialized_data(SubmessagePayload::Owned(bytes::Bytes::from(vec![0u8; 4])));
 
@@ -6819,6 +6837,22 @@ mod tests {
         feed_group_data(&mut user_logic, prefix, writer_guid, 2, 3);
 
         (participant, user_logic, reader, writer_guid, discovered_writer_set)
+    }
+
+    #[test]
+    fn a_group_reader_stores_a_sample_without_a_group_seq_num_on_arrival() {
+        let (participant, mut user_logic, reader, writer_guid, _writer_set) =
+            group_reader_with_one_matched_writer();
+
+        feed_data(
+            &mut user_logic,
+            participant.guid().prefix(),
+            writer_guid,
+            1,
+            ParameterList::default(),
+        );
+
+        assert_eq!(reader.available_changes().len(), 1);
     }
 
     #[test]
