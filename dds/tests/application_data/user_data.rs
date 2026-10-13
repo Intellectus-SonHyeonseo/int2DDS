@@ -1,50 +1,13 @@
 // USER_DATA set on one participant's entities must be readable by a remote participant.
 
-use std::{
-    thread::sleep,
-    time::{Duration as StdDuration, Instant},
-};
-
-use crate::common::*;
+use crate::{common::*, create_participant, delete_participant, wait_for};
 use int2dds::{
     common::instance_handle::InstanceHandle,
-    domain::{
-        domain_participant::DomainParticipant,
-        domain_participant_factory::DomainParticipantFactory, qos::DomainParticipantQos,
-    },
-    infrastructure::{qos_policy::UserDataQosPolicy, status::StatusMask},
+    domain::qos::DomainParticipantQos,
+    infrastructure::qos_policy::UserDataQosPolicy,
     publication::qos::{DataWriterQos, PublisherQos},
     subscription::qos::{DataReaderQos, SubscriberQos},
 };
-
-const DISCOVERY_TIMEOUT: StdDuration = StdDuration::from_secs(10);
-
-const POLL_INTERVAL: StdDuration = StdDuration::from_millis(50);
-
-fn create_participant(domain_id: i32, qos: DomainParticipantQos) -> DomainParticipant {
-    DomainParticipantFactory::get_instance()
-        .create_participant(domain_id, qos, None, StatusMask::default())
-        .unwrap()
-}
-
-fn delete_participant(participant: DomainParticipant) {
-    participant.delete_contained_entities().unwrap();
-    DomainParticipantFactory::get_instance().delete_participant(participant).unwrap();
-}
-
-// Polls until `find` returns Some or the deadline passes.
-fn wait_for<T>(mut find: impl FnMut() -> Option<T>) -> Option<T> {
-    let deadline = Instant::now() + DISCOVERY_TIMEOUT;
-
-    while Instant::now() < deadline {
-        if let Some(found) = find() {
-            return Some(found);
-        }
-        sleep(POLL_INTERVAL);
-    }
-
-    None
-}
 
 #[test]
 fn participant_user_data_is_visible_to_remote_participant() {
