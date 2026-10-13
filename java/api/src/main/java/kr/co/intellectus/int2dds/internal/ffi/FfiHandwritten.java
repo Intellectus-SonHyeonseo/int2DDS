@@ -13,6 +13,14 @@ public final class FfiHandwritten {
     private FfiHandwritten() {}
 
     /**
+     * The native backend this runtime selected: {@code "jni"} here, {@code "ffm"} for the JDK 22+
+     * class the Multi-Release JAR substitutes. Plain Java, so asking never loads a library.
+     */
+    public static String backend() {
+        return "jni";
+    }
+
+    /**
      * Installs {@code listener} on {@code reader} for the given status {@code mask}. The native
      * side wraps the listener in a global reference held by a binding-owned context and returns
      * that context's pointer, or {@code 0} on failure. The returned pointer must later be handed to
