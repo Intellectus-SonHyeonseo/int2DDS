@@ -1165,36 +1165,56 @@ namespace Int2Dds.Core
 
             unsafe
             {
-                fixed (byte* pBuffer = _buffer)
+                for (UIntPtr i = UIntPtr.Zero; (int)i < length; i = (UIntPtr)((int)i + 1))
                 {
-                    for (UIntPtr i = UIntPtr.Zero; (int)i < length; i = (UIntPtr)((int)i + 1))
+                    // Get sample info
+                    NativeSampleInfo nativeInfo;
+                    ReturnCodeHelper.CheckReturn(
+                        NativeMethods.int2dds_sample_seq_get_info(seqHandle, i, &nativeInfo));
+
+                    var info = ConvertSampleInfo(ref nativeInfo);
+
+                    if (nativeInfo.ValidData)
                     {
-                        // Get sample info
-                        NativeSampleInfo nativeInfo;
-                        ReturnCodeHelper.CheckReturn(
-                            NativeMethods.int2dds_sample_seq_get_info(seqHandle, i, &nativeInfo));
-
-                        var info = ConvertSampleInfo(ref nativeInfo);
-
-                        if (nativeInfo.ValidData)
-                        {
-                            // Get sample data
-                            ReturnCodeHelper.CheckReturn(
-                                NativeMethods.int2dds_sample_seq_get_data(seqHandle, i, pBuffer,
-                                    (UIntPtr)_buffer.Length, out var actualSize));
-
-                            var data = s_deserializer(CopyBuffer((int)actualSize));
-                            results.Add((new Sample<T>(data, true), info));
-                        }
-                        else
-                        {
-                            results.Add((new Sample<T>(default, false), info));
-                        }
+                        var data = s_deserializer(CopySequenceData(seqHandle, i));
+                        results.Add((new Sample<T>(data, true), info));
+                    }
+                    else
+                    {
+                        results.Add((new Sample<T>(default, false), info));
                     }
                 }
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Copies the serialized data of one sample in a sequence, growing the
+        /// buffer when the sample is larger than it.
+        /// </summary>
+        private byte[] CopySequenceData(IntPtr seqHandle, UIntPtr index)
+        {
+            unsafe
+            {
+                while (true)
+                {
+                    fixed (byte* pBuffer = _buffer)
+                    {
+                        var ret = NativeMethods.int2dds_sample_seq_get_data(
+                            seqHandle, index, pBuffer, (UIntPtr)_buffer.Length, out var actualSize);
+
+                        if (ret == ReturnCode.BufferTooSmall)
+                        {
+                            GrowBuffer((int)actualSize);
+                            continue;
+                        }
+                        ReturnCodeHelper.CheckReturn(ret);
+
+                        return CopyBuffer((int)actualSize);
+                    }
+                }
+            }
         }
 
         internal static unsafe SampleInfo ConvertSampleInfo(ref NativeSampleInfo native)

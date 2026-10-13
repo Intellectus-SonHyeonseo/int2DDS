@@ -1032,6 +1032,13 @@ impl<'a> CsGen<'a> {
         )
     }
 
+    /// Octet elements are written byte-by-byte with no alignment, so a whole
+    /// octet collection can go through the bulk `WriteBytes`/`ReadBytes` path
+    /// with an identical wire format.
+    fn is_octet_element(element: &ResolvedType) -> bool {
+        matches!(element, ResolvedType::U8 | ResolvedType::UInt8)
+    }
+
     fn default_value(&self, ty: &ResolvedType) -> String {
         match ty {
             ResolvedType::Bool => "false".to_string(),
@@ -1166,6 +1173,10 @@ impl<'a> CsGen<'a> {
             }
             ResolvedType::Struct(_) => {
                 self.line(&format!("{}.SerializeCdrInline(w);", accessor));
+            }
+            ResolvedType::Sequence { element, .. } if Self::is_octet_element(element) => {
+                self.line(&format!("w.WriteSeqHeader((uint){}.Count);", accessor));
+                self.line(&format!("w.WriteBytes({}.ToArray());", accessor));
             }
             ResolvedType::Sequence { element, .. } => {
                 let non_prim = Self::is_non_primitive_element(element);
@@ -1525,6 +1536,14 @@ impl<'a> CsGen<'a> {
                 let cs_name = cs_type_ref(struct_name);
                 self.line(&format!("{}.{} = {}.DeserializeCdrInline(r);", obj, name, cs_name));
             }
+            ResolvedType::Sequence { element, .. } if Self::is_octet_element(element) => {
+                let count_var = format!("_{name}Count");
+                self.line(&format!("var {} = r.ReadSeqHeader();", count_var));
+                self.line(&format!(
+                    "{}.{} = new List<byte>(r.ReadBytes((int){}));",
+                    obj, name, count_var
+                ));
+            }
             ResolvedType::Sequence { element, .. } => {
                 let count_var = format!("_{name}Count");
                 let cs_elem = Self::type_to_csharp(element);
@@ -1665,6 +1684,14 @@ impl<'a> CsGen<'a> {
             ResolvedType::Struct(struct_name) => {
                 let cs_name = cs_type_ref(struct_name);
                 self.line(&format!("var {} = {}.DeserializeCdrInline(r);", var_name, cs_name));
+            }
+            ResolvedType::Sequence { element, .. } if Self::is_octet_element(element) => {
+                let count_var = format!("{var_name}Count");
+                self.line(&format!("var {} = r.ReadSeqHeader();", count_var));
+                self.line(&format!(
+                    "var {} = new List<byte>(r.ReadBytes((int){}));",
+                    var_name, count_var
+                ));
             }
             ResolvedType::Sequence { element, .. } => {
                 let count_var = format!("{var_name}Count");
@@ -1926,6 +1953,35 @@ mod tests {
             "explicit xcdr2 overload must stay for QoS-driven writes: {}",
             code
         );
+    }
+
+    /// `sequence<octet>` keeps its `List<byte>` API but (de)serializes through the
+    /// bulk byte path instead of a per-element loop; other sequences keep the loop.
+    #[test]
+    fn test_octet_sequence_uses_bulk_bytes() {
+        let defs = parse_idl(
+            r#"
+            struct Blob {
+                sequence<octet> data;
+                sequence<sequence<octet> > chunks;
+                sequence<long> values;
+            };
+            "#,
+        )
+        .unwrap();
+        let model = resolve(defs).unwrap();
+        let code = generate(&model, "Blob.idl", &CSharpOptions::default());
+        assert!(code.contains("public List<byte> Data"), "{}", code);
+        assert!(code.contains("w.WriteBytes(Data.ToArray());"), "{}", code);
+        assert!(code.contains("new List<byte>(r.ReadBytes((int)_DataCount));"), "{}", code);
+        assert!(code.contains("w.WriteBytes(_item.ToArray());"), "{}", code);
+        assert!(
+            code.contains("var _item = new List<byte>(r.ReadBytes((int)_itemCount));"),
+            "{}",
+            code
+        );
+        assert!(code.contains("w.WriteI32(_item);"), "{}", code);
+        assert!(!code.contains("w.WriteU8(_item);"), "{}", code);
     }
 
     #[test]
