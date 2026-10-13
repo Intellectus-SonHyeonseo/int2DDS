@@ -473,8 +473,9 @@ impl Int2DdsTypeInfo {
                 false,
                 field.is_default(),
             );
+            // Member id 0 is the discriminator; branches are numbered from 1, as in derive.
             union_type.add_member(CompleteUnionMember::new(
-                index as u32,
+                index as u32 + 1,
                 member_flags,
                 field.type_id.clone(),
                 field.labels.clone(),
