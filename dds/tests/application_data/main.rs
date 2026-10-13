@@ -4,6 +4,7 @@
 mod common;
 
 mod group_data;
+mod topic_data;
 mod user_data;
 
 use std::{
