@@ -2276,6 +2276,54 @@ pub unsafe extern "C" fn int2dds_publisher_qos_get_presentation(
     INT2DDS_RET_OK
 }
 
+/// Set group data QoS for Publisher
+///
+/// # Safety
+/// - `qos` must be a valid QoS handle
+/// - `data` must point to `data_len` bytes, or be null if `data_len` is 0
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_publisher_qos_set_group_data(
+    qos: *mut Int2DdsPublisherQos,
+    data: *const u8,
+    data_len: usize,
+) -> Int2DdsRet {
+    check_null!(qos);
+
+    let qos_ref = &mut *qos;
+
+    if data_len == 0 {
+        qos_ref.inner.group_data.value = Vec::new();
+        return INT2DDS_RET_OK;
+    }
+
+    check_null!(data);
+    qos_ref.inner.group_data.value = std::slice::from_raw_parts(data, data_len).to_vec();
+
+    INT2DDS_RET_OK
+}
+
+/// Get group data from Publisher QoS handle
+/// Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+///
+/// # Safety
+/// - `qos` must be a valid publisher QoS handle
+/// - `buf` must be valid for `capacity` bytes, or null to query the size only
+/// - `size_out` must be a valid pointer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_publisher_qos_get_group_data(
+    qos: *const Int2DdsPublisherQos,
+    buf: *mut u8,
+    capacity: usize,
+    size_out: *mut usize,
+) -> Int2DdsRet {
+    check_null!(qos);
+    check_null!(size_out);
+
+    copy_octets_to_c(&(*qos).inner.group_data.value, buf, capacity, size_out);
+
+    INT2DDS_RET_OK
+}
+
 /// Destroy Publisher QoS
 ///
 /// # Safety
@@ -2392,6 +2440,54 @@ pub unsafe extern "C" fn int2dds_subscriber_qos_get_presentation(
     *access_scope_out = presentation_access_scope_to_c(&presentation.access_scope);
     *coherent_access_out = presentation.coherent_access;
     *ordered_access_out = presentation.ordered_access;
+
+    INT2DDS_RET_OK
+}
+
+/// Set group data QoS for Subscriber
+///
+/// # Safety
+/// - `qos` must be a valid QoS handle
+/// - `data` must point to `data_len` bytes, or be null if `data_len` is 0
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_subscriber_qos_set_group_data(
+    qos: *mut Int2DdsSubscriberQos,
+    data: *const u8,
+    data_len: usize,
+) -> Int2DdsRet {
+    check_null!(qos);
+
+    let qos_ref = &mut *qos;
+
+    if data_len == 0 {
+        qos_ref.inner.group_data.value = Vec::new();
+        return INT2DDS_RET_OK;
+    }
+
+    check_null!(data);
+    qos_ref.inner.group_data.value = std::slice::from_raw_parts(data, data_len).to_vec();
+
+    INT2DDS_RET_OK
+}
+
+/// Get group data from Subscriber QoS handle
+/// Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+///
+/// # Safety
+/// - `qos` must be a valid subscriber QoS handle
+/// - `buf` must be valid for `capacity` bytes, or null to query the size only
+/// - `size_out` must be a valid pointer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_subscriber_qos_get_group_data(
+    qos: *const Int2DdsSubscriberQos,
+    buf: *mut u8,
+    capacity: usize,
+    size_out: *mut usize,
+) -> Int2DdsRet {
+    check_null!(qos);
+    check_null!(size_out);
+
+    copy_octets_to_c(&(*qos).inner.group_data.value, buf, capacity, size_out);
 
     INT2DDS_RET_OK
 }
@@ -2838,6 +2934,59 @@ mod tests {
             assert_eq!(size, 0);
 
             assert_eq!(int2dds_topic_qos_destroy(qos), INT2DDS_RET_OK);
+        }
+    }
+
+    #[test]
+    fn publisher_qos_group_data_round_trip() {
+        unsafe {
+            let mut qos: *mut Int2DdsPublisherQos = ptr::null_mut();
+            assert_eq!(int2dds_publisher_qos_create_default(&mut qos), INT2DDS_RET_OK);
+            assert_eq!(
+                int2dds_publisher_qos_set_group_data(qos, b"publisher".as_ptr(), 9),
+                INT2DDS_RET_OK
+            );
+
+            let mut size = 0usize;
+            let mut buf = [0u8; 9];
+            assert_eq!(
+                int2dds_publisher_qos_get_group_data(qos, buf.as_mut_ptr(), buf.len(), &mut size),
+                INT2DDS_RET_OK
+            );
+            assert_eq!(size, 9);
+            assert_eq!(&buf, b"publisher");
+
+            assert_eq!(int2dds_publisher_qos_destroy(qos), INT2DDS_RET_OK);
+        }
+    }
+
+    #[test]
+    fn subscriber_qos_group_data_round_trip() {
+        unsafe {
+            let mut qos: *mut Int2DdsSubscriberQos = ptr::null_mut();
+            assert_eq!(int2dds_subscriber_qos_create_default(&mut qos), INT2DDS_RET_OK);
+            assert_eq!(
+                int2dds_subscriber_qos_set_group_data(qos, b"subscriber".as_ptr(), 10),
+                INT2DDS_RET_OK
+            );
+
+            let mut size = 0usize;
+            let mut buf = [0u8; 10];
+            assert_eq!(
+                int2dds_subscriber_qos_get_group_data(qos, buf.as_mut_ptr(), buf.len(), &mut size),
+                INT2DDS_RET_OK
+            );
+            assert_eq!(size, 10);
+            assert_eq!(&buf, b"subscriber");
+
+            assert_eq!(int2dds_subscriber_qos_set_group_data(qos, ptr::null(), 0), INT2DDS_RET_OK);
+            assert_eq!(
+                int2dds_subscriber_qos_get_group_data(qos, ptr::null_mut(), 0, &mut size),
+                INT2DDS_RET_OK
+            );
+            assert_eq!(size, 0);
+
+            assert_eq!(int2dds_subscriber_qos_destroy(qos), INT2DDS_RET_OK);
         }
     }
 

@@ -1155,6 +1155,28 @@ pub unsafe extern "C" fn int2dds_publication_builtin_topic_data_get_topic_data(
     INT2DDS_RET_OK
 }
 
+/// Get the group_data from a PublicationBuiltinTopicData.
+/// Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+///
+/// # Safety
+/// - `data` must be a valid PublicationBuiltinTopicData
+/// - `buf` must be valid for `capacity` bytes, or null to query the size only
+/// - `size_out` must be a valid pointer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_publication_builtin_topic_data_get_group_data(
+    data: *const Int2DdsPublicationBuiltinTopicData,
+    buf: *mut u8,
+    capacity: usize,
+    size_out: *mut usize,
+) -> Int2DdsRet {
+    check_null!(data);
+    check_null!(size_out);
+
+    copy_octets_to_c(&(*data).inner.group_data().value, buf, capacity, size_out);
+
+    INT2DDS_RET_OK
+}
+
 /// Free a PublicationBuiltinTopicData obtained from discovery.
 ///
 /// # Safety
@@ -1454,6 +1476,28 @@ pub unsafe extern "C" fn int2dds_subscription_builtin_topic_data_get_topic_data(
     check_null!(size_out);
 
     copy_octets_to_c(&(*data).inner.topic_data().value, buf, capacity, size_out);
+
+    INT2DDS_RET_OK
+}
+
+/// Get the group_data from a SubscriptionBuiltinTopicData.
+/// Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+///
+/// # Safety
+/// - `data` must be a valid SubscriptionBuiltinTopicData
+/// - `buf` must be valid for `capacity` bytes, or null to query the size only
+/// - `size_out` must be a valid pointer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_subscription_builtin_topic_data_get_group_data(
+    data: *const Int2DdsSubscriptionBuiltinTopicData,
+    buf: *mut u8,
+    capacity: usize,
+    size_out: *mut usize,
+) -> Int2DdsRet {
+    check_null!(data);
+    check_null!(size_out);
+
+    copy_octets_to_c(&(*data).inner.group_data().value, buf, capacity, size_out);
 
     INT2DDS_RET_OK
 }

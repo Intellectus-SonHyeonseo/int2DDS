@@ -1497,6 +1497,20 @@ Int2DdsRet int2dds_publication_builtin_topic_data_get_topic_data(const struct In
                                                                  uintptr_t *size_out);
 
 /**
+ * Get the group_data from a PublicationBuiltinTopicData.
+ * Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+ *
+ * # Safety
+ * - `data` must be a valid PublicationBuiltinTopicData
+ * - `buf` must be valid for `capacity` bytes, or null to query the size only
+ * - `size_out` must be a valid pointer
+ */
+Int2DdsRet int2dds_publication_builtin_topic_data_get_group_data(const struct Int2DdsPublicationBuiltinTopicData *data,
+                                                                 uint8_t *buf,
+                                                                 uintptr_t capacity,
+                                                                 uintptr_t *size_out);
+
+/**
  * Free a PublicationBuiltinTopicData obtained from discovery.
  *
  * # Safety
@@ -1663,6 +1677,20 @@ Int2DdsRet int2dds_subscription_builtin_topic_data_get_presentation(const struct
  * - `size_out` must be a valid pointer
  */
 Int2DdsRet int2dds_subscription_builtin_topic_data_get_topic_data(const struct Int2DdsSubscriptionBuiltinTopicData *data,
+                                                                  uint8_t *buf,
+                                                                  uintptr_t capacity,
+                                                                  uintptr_t *size_out);
+
+/**
+ * Get the group_data from a SubscriptionBuiltinTopicData.
+ * Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+ *
+ * # Safety
+ * - `data` must be a valid SubscriptionBuiltinTopicData
+ * - `buf` must be valid for `capacity` bytes, or null to query the size only
+ * - `size_out` must be a valid pointer
+ */
+Int2DdsRet int2dds_subscription_builtin_topic_data_get_group_data(const struct Int2DdsSubscriptionBuiltinTopicData *data,
                                                                   uint8_t *buf,
                                                                   uintptr_t capacity,
                                                                   uintptr_t *size_out);
@@ -4284,6 +4312,31 @@ Int2DdsRet int2dds_publisher_qos_get_presentation(const struct Int2DdsPublisherQ
                                                   bool *ordered_access_out);
 
 /**
+ * Set group data QoS for Publisher
+ *
+ * # Safety
+ * - `qos` must be a valid QoS handle
+ * - `data` must point to `data_len` bytes, or be null if `data_len` is 0
+ */
+Int2DdsRet int2dds_publisher_qos_set_group_data(struct Int2DdsPublisherQos *qos,
+                                                const uint8_t *data,
+                                                uintptr_t data_len);
+
+/**
+ * Get group data from Publisher QoS handle
+ * Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+ *
+ * # Safety
+ * - `qos` must be a valid publisher QoS handle
+ * - `buf` must be valid for `capacity` bytes, or null to query the size only
+ * - `size_out` must be a valid pointer
+ */
+Int2DdsRet int2dds_publisher_qos_get_group_data(const struct Int2DdsPublisherQos *qos,
+                                                uint8_t *buf,
+                                                uintptr_t capacity,
+                                                uintptr_t *size_out);
+
+/**
  * Destroy Publisher QoS
  *
  * # Safety
@@ -4333,6 +4386,31 @@ Int2DdsRet int2dds_subscriber_qos_get_presentation(const struct Int2DdsSubscribe
                                                    int32_t *access_scope_out,
                                                    bool *coherent_access_out,
                                                    bool *ordered_access_out);
+
+/**
+ * Set group data QoS for Subscriber
+ *
+ * # Safety
+ * - `qos` must be a valid QoS handle
+ * - `data` must point to `data_len` bytes, or be null if `data_len` is 0
+ */
+Int2DdsRet int2dds_subscriber_qos_set_group_data(struct Int2DdsSubscriberQos *qos,
+                                                 const uint8_t *data,
+                                                 uintptr_t data_len);
+
+/**
+ * Get group data from Subscriber QoS handle
+ * Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+ *
+ * # Safety
+ * - `qos` must be a valid subscriber QoS handle
+ * - `buf` must be valid for `capacity` bytes, or null to query the size only
+ * - `size_out` must be a valid pointer
+ */
+Int2DdsRet int2dds_subscriber_qos_get_group_data(const struct Int2DdsSubscriberQos *qos,
+                                                 uint8_t *buf,
+                                                 uintptr_t capacity,
+                                                 uintptr_t *size_out);
 
 /**
  * Destroy Subscriber QoS

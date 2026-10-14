@@ -16,6 +16,8 @@ use int2dds_ffi::type_info::*;
 use int2dds_ffi::types::*;
 
 const TOPIC_DATA: &[u8] = b"topic-data";
+const PUBLISHER_GROUP_DATA: &[u8] = b"publisher-group-data";
+const SUBSCRIBER_GROUP_DATA: &[u8] = b"subscriber-group-data";
 
 unsafe fn create_topic(
     participant: *mut Int2DdsParticipant,
@@ -109,16 +111,39 @@ fn application_data_qos_reaches_matched_endpoints() {
         let topic = create_topic(participant, topic_qos);
         assert_eq!(int2dds_topic_qos_destroy(topic_qos), INT2DDS_RET_OK);
 
+        let mut publisher_qos = ptr::null_mut();
+        assert_eq!(int2dds_publisher_qos_create_default(&mut publisher_qos), INT2DDS_RET_OK);
+        assert_eq!(
+            int2dds_publisher_qos_set_group_data(
+                publisher_qos,
+                PUBLISHER_GROUP_DATA.as_ptr(),
+                PUBLISHER_GROUP_DATA.len()
+            ),
+            INT2DDS_RET_OK
+        );
         let mut publisher = ptr::null_mut();
         assert_eq!(
-            int2dds_create_publisher(participant, ptr::null(), &mut publisher),
+            int2dds_create_publisher(participant, publisher_qos, &mut publisher),
+            INT2DDS_RET_OK
+        );
+        assert_eq!(int2dds_publisher_qos_destroy(publisher_qos), INT2DDS_RET_OK);
+
+        let mut subscriber_qos = ptr::null_mut();
+        assert_eq!(int2dds_subscriber_qos_create_default(&mut subscriber_qos), INT2DDS_RET_OK);
+        assert_eq!(
+            int2dds_subscriber_qos_set_group_data(
+                subscriber_qos,
+                SUBSCRIBER_GROUP_DATA.as_ptr(),
+                SUBSCRIBER_GROUP_DATA.len()
+            ),
             INT2DDS_RET_OK
         );
         let mut subscriber = ptr::null_mut();
         assert_eq!(
-            int2dds_create_subscriber(participant, ptr::null(), &mut subscriber),
+            int2dds_create_subscriber(participant, subscriber_qos, &mut subscriber),
             INT2DDS_RET_OK
         );
+        assert_eq!(int2dds_subscriber_qos_destroy(subscriber_qos), INT2DDS_RET_OK);
 
         let mut writer = ptr::null_mut();
         assert_eq!(
@@ -176,6 +201,28 @@ fn application_data_qos_reaches_matched_endpoints() {
             INT2DDS_RET_OK
         );
         assert_eq!(&buf[..size], TOPIC_DATA);
+
+        assert_eq!(
+            int2dds_publication_builtin_topic_data_get_group_data(
+                publication_data,
+                buf.as_mut_ptr(),
+                buf.len(),
+                &mut size
+            ),
+            INT2DDS_RET_OK
+        );
+        assert_eq!(&buf[..size], PUBLISHER_GROUP_DATA);
+
+        assert_eq!(
+            int2dds_subscription_builtin_topic_data_get_group_data(
+                subscription_data,
+                buf.as_mut_ptr(),
+                buf.len(),
+                &mut size
+            ),
+            INT2DDS_RET_OK
+        );
+        assert_eq!(&buf[..size], SUBSCRIBER_GROUP_DATA);
 
         assert_eq!(
             int2dds_publication_builtin_topic_data_destroy(publication_data),
