@@ -250,6 +250,12 @@ namespace Int2Dds.Interop
         internal static extern int int2dds_topic_qos_set_data_representation(IntPtr qos, int kind);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static unsafe extern int int2dds_topic_qos_set_topic_data(IntPtr qos, byte* data, UIntPtr data_len);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static unsafe extern int int2dds_topic_qos_get_topic_data(IntPtr qos, byte* buf, UIntPtr capacity, out UIntPtr size_out);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static extern int int2dds_topic_qos_destroy(IntPtr qos);
 
         // ── Participant QoS ─────────────────────────────────────────────────

@@ -228,6 +228,17 @@ namespace Int2Dds.Discovery
             }
         }
 
+        /// <summary>The topic_data bytes of the reader's topic (possibly empty).</summary>
+        public unsafe byte[] TopicData
+        {
+            get
+            {
+                if (_disposed) throw new ObjectDisposedException(GetType().Name);
+                return Int2Dds.Qos.QosMarshal.ReadBytes(
+                    _handle, NativeMethods.int2dds_subscription_builtin_topic_data_get_topic_data);
+            }
+        }
+
         public void Dispose()
         {
             if (_disposed) return;
