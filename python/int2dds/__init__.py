@@ -35,6 +35,7 @@ try:
         ResourceLimits,
         SubscriberQos,
         TimeBasedFilter,
+        TopicData,
         TopicQos,
         TransportPriority,
         UserData,
@@ -113,6 +114,7 @@ __all__ = [
     "History",
     "Presentation",
     "PresentationAccessScope",
+    "TopicData",
     # Conditions
     "WaitSet",
     "Condition",

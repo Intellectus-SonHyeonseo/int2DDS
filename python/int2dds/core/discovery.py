@@ -102,6 +102,8 @@ def _extract_publication(item) -> dict:
             lib.int2dds_publication_builtin_topic_data_get_user_data, item),
         **_read_presentation(
             lib.int2dds_publication_builtin_topic_data_get_presentation, item),
+        "topic_data": _read_bytes(
+            lib.int2dds_publication_builtin_topic_data_get_topic_data, item),
     }
 
 
@@ -130,6 +132,8 @@ def _extract_subscription(item) -> dict:
             lib.int2dds_subscription_builtin_topic_data_get_user_data, item),
         **_read_presentation(
             lib.int2dds_subscription_builtin_topic_data_get_presentation, item),
+        "topic_data": _read_bytes(
+            lib.int2dds_subscription_builtin_topic_data_get_topic_data, item),
     }
 
 

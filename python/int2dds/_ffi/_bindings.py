@@ -838,6 +838,17 @@ ffi.cdef("""
         Int2DdsTopicQos *qos,
         int32_t kind
     );
+    Int2DdsRet int2dds_topic_qos_set_topic_data(
+        Int2DdsTopicQos *qos,
+        const uint8_t *data,
+        uintptr_t data_len
+    );
+    Int2DdsRet int2dds_topic_qos_get_topic_data(
+        const Int2DdsTopicQos *qos,
+        uint8_t *buf,
+        uintptr_t capacity,
+        uintptr_t *size_out
+    );
     Int2DdsRet int2dds_topic_qos_destroy(Int2DdsTopicQos *qos);
 
     /* Publisher QoS */
@@ -1318,6 +1329,7 @@ ffi.cdef("""
     Int2DdsRet int2dds_publication_builtin_topic_data_get_lifespan(const Int2DdsPublicationBuiltinTopicData *data, int32_t *sec_out, uint32_t *nanosec_out);
     Int2DdsRet int2dds_publication_builtin_topic_data_get_user_data(const Int2DdsPublicationBuiltinTopicData *data, uint8_t *buf, uintptr_t capacity, uintptr_t *size_out);
     Int2DdsRet int2dds_publication_builtin_topic_data_get_presentation(const Int2DdsPublicationBuiltinTopicData *data, int32_t *access_scope_out, bool *coherent_access_out, bool *ordered_access_out);
+    Int2DdsRet int2dds_publication_builtin_topic_data_get_topic_data(const Int2DdsPublicationBuiltinTopicData *data, uint8_t *buf, uintptr_t capacity, uintptr_t *size_out);
     Int2DdsRet int2dds_publication_builtin_topic_data_destroy(Int2DdsPublicationBuiltinTopicData *data);
 
     Int2DdsRet int2dds_subscription_builtin_topic_data_get_key(const Int2DdsSubscriptionBuiltinTopicData *data, uint8_t (*key_out)[12]);
@@ -1332,6 +1344,7 @@ ffi.cdef("""
     Int2DdsRet int2dds_subscription_builtin_topic_data_get_deadline(const Int2DdsSubscriptionBuiltinTopicData *data, int32_t *sec_out, uint32_t *nanosec_out);
     Int2DdsRet int2dds_subscription_builtin_topic_data_get_user_data(const Int2DdsSubscriptionBuiltinTopicData *data, uint8_t *buf, uintptr_t capacity, uintptr_t *size_out);
     Int2DdsRet int2dds_subscription_builtin_topic_data_get_presentation(const Int2DdsSubscriptionBuiltinTopicData *data, int32_t *access_scope_out, bool *coherent_access_out, bool *ordered_access_out);
+    Int2DdsRet int2dds_subscription_builtin_topic_data_get_topic_data(const Int2DdsSubscriptionBuiltinTopicData *data, uint8_t *buf, uintptr_t capacity, uintptr_t *size_out);
     Int2DdsRet int2dds_subscription_builtin_topic_data_destroy(Int2DdsSubscriptionBuiltinTopicData *data);
 
     /* TypeObject introspection */

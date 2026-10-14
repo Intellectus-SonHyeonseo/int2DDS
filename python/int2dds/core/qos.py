@@ -182,6 +182,11 @@ class UserData:
 
 
 @dataclass
+class TopicData:
+    data: bytes = b""
+
+
+@dataclass
 class WriterDataLifecycle:
     autodispose_unregistered_instances: bool = True
 
@@ -352,6 +357,7 @@ class TopicQos:
     lifespan: Lifespan | None = None
     ownership: Ownership | None = None
     data_representation: DataRepresentation | None = None
+    topic_data: TopicData | None = None
 
 
 @dataclass
