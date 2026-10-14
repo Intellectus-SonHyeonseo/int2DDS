@@ -26,7 +26,11 @@ pub struct DomainParticipantQos {
     pub property: PropertyQosPolicy,
 }
 
-impl Qos for DomainParticipantQos {}
+impl Qos for DomainParticipantQos {
+    fn autoenable_created_entities(&self) -> bool {
+        self.entity_factory.autoenable_created_entities
+    }
+}
 
 impl DomainParticipantQos {}
 
