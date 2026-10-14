@@ -27,6 +27,8 @@ import kr.co.intellectus.int2dds.qos.OwnershipKind;
 import kr.co.intellectus.int2dds.qos.OwnershipStrength;
 import kr.co.intellectus.int2dds.qos.ParticipantQos;
 import kr.co.intellectus.int2dds.qos.Partition;
+import kr.co.intellectus.int2dds.qos.Presentation;
+import kr.co.intellectus.int2dds.qos.PresentationAccessScopeKind;
 import kr.co.intellectus.int2dds.qos.Property;
 import kr.co.intellectus.int2dds.qos.PropertyEntry;
 import kr.co.intellectus.int2dds.qos.PublisherQos;
@@ -144,6 +146,15 @@ public final class QosMarshal {
     }
 
     public static void applyPublisherQos(long h, PublisherQos q) {
+        if (q.getPresentation() != null) {
+            Presentation p = q.getPresentation();
+            ReturnCodes.check(
+                    FfiAccess.publisherQosSetPresentation(
+                            h,
+                            p.getAccessScope().value(),
+                            p.isCoherentAccess(),
+                            p.isOrderedAccess()));
+        }
         if (q.getPartition() != null) {
             applyPartition(
                     q.getPartition(),
@@ -151,12 +162,63 @@ public final class QosMarshal {
         }
     }
 
+    /**
+     * Reads back a publisher QoS handle's {@code Presentation}. {@code Partition} has no getter and
+     * stays null.
+     */
+    public static PublisherQos readPublisherQos(long h) {
+        int[] accessScope = new int[1];
+        boolean[] coherentAccess = new boolean[1];
+        boolean[] orderedAccess = new boolean[1];
+        ReturnCodes.check(
+                FfiAccess.publisherQosGetPresentation(
+                        h, accessScope, coherentAccess, orderedAccess));
+
+        PublisherQos q = new PublisherQos();
+        q.setPresentation(
+                new Presentation(
+                        PresentationAccessScopeKind.fromValue(accessScope[0]),
+                        coherentAccess[0],
+                        orderedAccess[0]));
+        return q;
+    }
+
     public static void applySubscriberQos(long h, SubscriberQos q) {
+        if (q.getPresentation() != null) {
+            Presentation p = q.getPresentation();
+            ReturnCodes.check(
+                    FfiAccess.subscriberQosSetPresentation(
+                            h,
+                            p.getAccessScope().value(),
+                            p.isCoherentAccess(),
+                            p.isOrderedAccess()));
+        }
         if (q.getPartition() != null) {
             applyPartition(
                     q.getPartition(),
                     (names, count) -> FfiAccess.subscriberQosSetPartition(h, names, count));
         }
+    }
+
+    /**
+     * Reads back a subscriber QoS handle's {@code Presentation}. {@code Partition} has no getter
+     * and stays null.
+     */
+    public static SubscriberQos readSubscriberQos(long h) {
+        int[] accessScope = new int[1];
+        boolean[] coherentAccess = new boolean[1];
+        boolean[] orderedAccess = new boolean[1];
+        ReturnCodes.check(
+                FfiAccess.subscriberQosGetPresentation(
+                        h, accessScope, coherentAccess, orderedAccess));
+
+        SubscriberQos q = new SubscriberQos();
+        q.setPresentation(
+                new Presentation(
+                        PresentationAccessScopeKind.fromValue(accessScope[0]),
+                        coherentAccess[0],
+                        orderedAccess[0]));
+        return q;
     }
 
     public static void applyTopicQos(long h, TopicQos q) {

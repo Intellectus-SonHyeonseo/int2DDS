@@ -33,7 +33,8 @@ import org.junit.jupiter.api.Test;
  * policy); DomainParticipant uses {@code Property}, since {@code UserData} is that type's one
  * unsupported policy (dds/src/dcps/domain/qos/mod.rs).
  *
- * <p>Publisher, Subscriber, DomainParticipant and Topic have no {@code getQos()} yet, so those are
+ * <p>{@code Partition} has no native getter, {@code Property} reads back only as text, and Topic
+ * has no {@code getQos()} yet, so the Publisher, Subscriber, DomainParticipant and Topic cases are
  * treated as a can-fail round trip through the absence of a thrown exception, which {@link
  * kr.co.intellectus.int2dds.internal.ReturnCodes#check} would raise on any non-OK status.
  */

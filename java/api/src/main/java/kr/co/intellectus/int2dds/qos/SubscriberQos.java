@@ -9,9 +9,18 @@ import java.util.Objects;
  */
 public class SubscriberQos {
 
+    private Presentation presentation;
     private Partition partition;
 
     public SubscriberQos() {}
+
+    public Presentation getPresentation() {
+        return presentation;
+    }
+
+    public void setPresentation(Presentation presentation) {
+        this.presentation = presentation;
+    }
 
     public Partition getPartition() {
         return partition;
@@ -30,16 +39,17 @@ public class SubscriberQos {
             return false;
         }
         SubscriberQos other = (SubscriberQos) o;
-        return Objects.equals(partition, other.partition);
+        return Objects.equals(presentation, other.presentation)
+                && Objects.equals(partition, other.partition);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(partition);
+        return Objects.hash(presentation, partition);
     }
 
     @Override
     public String toString() {
-        return "SubscriberQos{partition=" + partition + "}";
+        return "SubscriberQos{presentation=" + presentation + ", partition=" + partition + "}";
     }
 }

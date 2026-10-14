@@ -40,6 +40,9 @@ public final class PublicationBuiltinTopicData {
     private final int livelinessLeaseSeconds;
     private final int livelinessLeaseNanos;
     private final byte[] userData;
+    private final int presentationAccessScope;
+    private final boolean presentationCoherentAccess;
+    private final boolean presentationOrderedAccess;
     private final int instanceState;
     private final boolean hasData;
     private final TypeObject typeObject;
@@ -60,6 +63,9 @@ public final class PublicationBuiltinTopicData {
             int livelinessLeaseSeconds,
             int livelinessLeaseNanos,
             byte[] userData,
+            int presentationAccessScope,
+            boolean presentationCoherentAccess,
+            boolean presentationOrderedAccess,
             int instanceState,
             boolean hasData,
             TypeObject typeObject) {
@@ -78,6 +84,9 @@ public final class PublicationBuiltinTopicData {
         this.livelinessLeaseSeconds = livelinessLeaseSeconds;
         this.livelinessLeaseNanos = livelinessLeaseNanos;
         this.userData = userData;
+        this.presentationAccessScope = presentationAccessScope;
+        this.presentationCoherentAccess = presentationCoherentAccess;
+        this.presentationOrderedAccess = presentationOrderedAccess;
         this.instanceState = instanceState;
         this.hasData = hasData;
         this.typeObject = typeObject;
@@ -173,6 +182,19 @@ public final class PublicationBuiltinTopicData {
         return userData.clone();
     }
 
+    /** The publisher's presentation access scope: 0 = INSTANCE, 1 = TOPIC, 2 = GROUP. */
+    public int presentationAccessScope() {
+        return presentationAccessScope;
+    }
+
+    public boolean presentationCoherentAccess() {
+        return presentationCoherentAccess;
+    }
+
+    public boolean presentationOrderedAccess() {
+        return presentationOrderedAccess;
+    }
+
     /**
      * Reads every field off a live native {@code PublicationBuiltinTopicData} box into an immutable
      * snapshot. {@code data} must still be valid when this is called; the caller retains ownership
@@ -200,6 +222,9 @@ public final class PublicationBuiltinTopicData {
                 0,
                 0,
                 new byte[0],
+                0,
+                false,
+                false,
                 instanceState,
                 false,
                 null);
@@ -295,6 +320,16 @@ public final class PublicationBuiltinTopicData {
                         },
                         userDataBytes));
 
+        int[] presentationAccessScope = new int[1];
+        boolean[] presentationCoherentAccess = new boolean[1];
+        boolean[] presentationOrderedAccess = new boolean[1];
+        ReturnCodes.check(
+                FfiAccess.pubDataGetPresentation(
+                        data,
+                        presentationAccessScope,
+                        presentationCoherentAccess,
+                        presentationOrderedAccess));
+
         return new PublicationBuiltinTopicData(
                 key,
                 endpointGuid,
@@ -311,6 +346,9 @@ public final class PublicationBuiltinTopicData {
                 leaseSeconds[0],
                 leaseNanos[0],
                 userDataBytes[0],
+                presentationAccessScope[0],
+                presentationCoherentAccess[0],
+                presentationOrderedAccess[0],
                 instanceState,
                 true,
                 typeObject);
