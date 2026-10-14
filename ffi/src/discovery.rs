@@ -5,7 +5,7 @@
 //! retrieval, and field getters for opaque builtin topic data types.
 
 use crate::error::*;
-use crate::qos::presentation_access_scope_to_c;
+use crate::qos::{copy_octets_to_c, presentation_access_scope_to_c};
 use crate::subscriber::{
     INT2DDS_INSTANCE_STATE_ALIVE, INT2DDS_INSTANCE_STATE_NOT_ALIVE_DISPOSED,
     INT2DDS_INSTANCE_STATE_NOT_ALIVE_NO_WRITERS,
@@ -1133,6 +1133,28 @@ pub unsafe extern "C" fn int2dds_publication_builtin_topic_data_get_presentation
     INT2DDS_RET_OK
 }
 
+/// Get the topic_data from a PublicationBuiltinTopicData.
+/// Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+///
+/// # Safety
+/// - `data` must be a valid PublicationBuiltinTopicData
+/// - `buf` must be valid for `capacity` bytes, or null to query the size only
+/// - `size_out` must be a valid pointer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_publication_builtin_topic_data_get_topic_data(
+    data: *const Int2DdsPublicationBuiltinTopicData,
+    buf: *mut u8,
+    capacity: usize,
+    size_out: *mut usize,
+) -> Int2DdsRet {
+    check_null!(data);
+    check_null!(size_out);
+
+    copy_octets_to_c(&(*data).inner.topic_data().value, buf, capacity, size_out);
+
+    INT2DDS_RET_OK
+}
+
 /// Free a PublicationBuiltinTopicData obtained from discovery.
 ///
 /// # Safety
@@ -1410,6 +1432,28 @@ pub unsafe extern "C" fn int2dds_subscription_builtin_topic_data_get_presentatio
     *access_scope_out = presentation_access_scope_to_c(&presentation.access_scope);
     *coherent_access_out = presentation.coherent_access;
     *ordered_access_out = presentation.ordered_access;
+
+    INT2DDS_RET_OK
+}
+
+/// Get the topic_data from a SubscriptionBuiltinTopicData.
+/// Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+///
+/// # Safety
+/// - `data` must be a valid SubscriptionBuiltinTopicData
+/// - `buf` must be valid for `capacity` bytes, or null to query the size only
+/// - `size_out` must be a valid pointer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_subscription_builtin_topic_data_get_topic_data(
+    data: *const Int2DdsSubscriptionBuiltinTopicData,
+    buf: *mut u8,
+    capacity: usize,
+    size_out: *mut usize,
+) -> Int2DdsRet {
+    check_null!(data);
+    check_null!(size_out);
+
+    copy_octets_to_c(&(*data).inner.topic_data().value, buf, capacity, size_out);
 
     INT2DDS_RET_OK
 }

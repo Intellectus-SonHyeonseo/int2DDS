@@ -1483,6 +1483,20 @@ Int2DdsRet int2dds_publication_builtin_topic_data_get_presentation(const struct 
                                                                    bool *ordered_access_out);
 
 /**
+ * Get the topic_data from a PublicationBuiltinTopicData.
+ * Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+ *
+ * # Safety
+ * - `data` must be a valid PublicationBuiltinTopicData
+ * - `buf` must be valid for `capacity` bytes, or null to query the size only
+ * - `size_out` must be a valid pointer
+ */
+Int2DdsRet int2dds_publication_builtin_topic_data_get_topic_data(const struct Int2DdsPublicationBuiltinTopicData *data,
+                                                                 uint8_t *buf,
+                                                                 uintptr_t capacity,
+                                                                 uintptr_t *size_out);
+
+/**
  * Free a PublicationBuiltinTopicData obtained from discovery.
  *
  * # Safety
@@ -1638,6 +1652,20 @@ Int2DdsRet int2dds_subscription_builtin_topic_data_get_presentation(const struct
                                                                     int32_t *access_scope_out,
                                                                     bool *coherent_access_out,
                                                                     bool *ordered_access_out);
+
+/**
+ * Get the topic_data from a SubscriptionBuiltinTopicData.
+ * Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+ *
+ * # Safety
+ * - `data` must be a valid SubscriptionBuiltinTopicData
+ * - `buf` must be valid for `capacity` bytes, or null to query the size only
+ * - `size_out` must be a valid pointer
+ */
+Int2DdsRet int2dds_subscription_builtin_topic_data_get_topic_data(const struct Int2DdsSubscriptionBuiltinTopicData *data,
+                                                                  uint8_t *buf,
+                                                                  uintptr_t capacity,
+                                                                  uintptr_t *size_out);
 
 /**
  * Free a SubscriptionBuiltinTopicData obtained from discovery.
@@ -4019,6 +4047,31 @@ Int2DdsRet int2dds_topic_qos_set_ownership(struct Int2DdsTopicQos *qos, int32_t 
  * - `kind` must be a valid data representation kind
  */
 Int2DdsRet int2dds_topic_qos_set_data_representation(struct Int2DdsTopicQos *qos, int32_t kind);
+
+/**
+ * Set topic data QoS for Topic
+ *
+ * # Safety
+ * - `qos` must be a valid QoS handle
+ * - `data` must point to `data_len` bytes, or be null if `data_len` is 0
+ */
+Int2DdsRet int2dds_topic_qos_set_topic_data(struct Int2DdsTopicQos *qos,
+                                            const uint8_t *data,
+                                            uintptr_t data_len);
+
+/**
+ * Get topic data from Topic QoS handle
+ * Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+ *
+ * # Safety
+ * - `qos` must be a valid topic QoS handle
+ * - `buf` must be valid for `capacity` bytes, or null to query the size only
+ * - `size_out` must be a valid pointer
+ */
+Int2DdsRet int2dds_topic_qos_get_topic_data(const struct Int2DdsTopicQos *qos,
+                                            uint8_t *buf,
+                                            uintptr_t capacity,
+                                            uintptr_t *size_out);
 
 /**
  * Destroy Topic QoS

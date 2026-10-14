@@ -1705,6 +1705,54 @@ pub unsafe extern "C" fn int2dds_topic_qos_set_data_representation(
     INT2DDS_RET_OK
 }
 
+/// Set topic data QoS for Topic
+///
+/// # Safety
+/// - `qos` must be a valid QoS handle
+/// - `data` must point to `data_len` bytes, or be null if `data_len` is 0
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_topic_qos_set_topic_data(
+    qos: *mut Int2DdsTopicQos,
+    data: *const u8,
+    data_len: usize,
+) -> Int2DdsRet {
+    check_null!(qos);
+
+    let qos_ref = &mut *qos;
+
+    if data_len == 0 {
+        qos_ref.inner.topic_data.value = Vec::new();
+        return INT2DDS_RET_OK;
+    }
+
+    check_null!(data);
+    qos_ref.inner.topic_data.value = std::slice::from_raw_parts(data, data_len).to_vec();
+
+    INT2DDS_RET_OK
+}
+
+/// Get topic data from Topic QoS handle
+/// Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+///
+/// # Safety
+/// - `qos` must be a valid topic QoS handle
+/// - `buf` must be valid for `capacity` bytes, or null to query the size only
+/// - `size_out` must be a valid pointer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_topic_qos_get_topic_data(
+    qos: *const Int2DdsTopicQos,
+    buf: *mut u8,
+    capacity: usize,
+    size_out: *mut usize,
+) -> Int2DdsRet {
+    check_null!(qos);
+    check_null!(size_out);
+
+    copy_octets_to_c(&(*qos).inner.topic_data.value, buf, capacity, size_out);
+
+    INT2DDS_RET_OK
+}
+
 /// Destroy Topic QoS
 ///
 /// # Safety
@@ -2381,7 +2429,12 @@ pub(crate) fn presentation_access_scope_to_c(access_scope: &PresentationQosAcces
 }
 
 // Writes the full length to `size_out` and copies at most `capacity` bytes into a non-null `buf`.
-unsafe fn copy_octets_to_c(value: &[u8], buf: *mut u8, capacity: usize, size_out: *mut usize) {
+pub(crate) unsafe fn copy_octets_to_c(
+    value: &[u8],
+    buf: *mut u8,
+    capacity: usize,
+    size_out: *mut usize,
+) {
     *size_out = value.len();
 
     if !buf.is_null() && capacity > 0 {
@@ -2758,6 +2811,33 @@ mod tests {
             assert_eq!(&buf, b"reader");
 
             assert_eq!(int2dds_datareader_qos_destroy(qos), INT2DDS_RET_OK);
+        }
+    }
+
+    #[test]
+    fn topic_qos_topic_data_round_trip() {
+        unsafe {
+            let mut qos: *mut Int2DdsTopicQos = ptr::null_mut();
+            assert_eq!(int2dds_topic_qos_create_default(&mut qos), INT2DDS_RET_OK);
+            assert_eq!(int2dds_topic_qos_set_topic_data(qos, b"topic".as_ptr(), 5), INT2DDS_RET_OK);
+
+            let mut size = 0usize;
+            let mut buf = [0u8; 5];
+            assert_eq!(
+                int2dds_topic_qos_get_topic_data(qos, buf.as_mut_ptr(), buf.len(), &mut size),
+                INT2DDS_RET_OK
+            );
+            assert_eq!(size, 5);
+            assert_eq!(&buf, b"topic");
+
+            assert_eq!(int2dds_topic_qos_set_topic_data(qos, ptr::null(), 0), INT2DDS_RET_OK);
+            assert_eq!(
+                int2dds_topic_qos_get_topic_data(qos, ptr::null_mut(), 0, &mut size),
+                INT2DDS_RET_OK
+            );
+            assert_eq!(size, 0);
+
+            assert_eq!(int2dds_topic_qos_destroy(qos), INT2DDS_RET_OK);
         }
     }
 
