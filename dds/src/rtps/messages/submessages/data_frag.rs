@@ -32,7 +32,7 @@ const FIXED_BODY_LEN: usize = 32;
 // Not spec text: no validity rule bounds total_fragments itself -- a
 // self-consistent sample_size/fragment_size pair can still name far more
 // fragments than any real sample needs.
-// Caps the fragment count; sample bytes are unbounded up to u32, the budget only evicts others.
+// Caps the fragment count; sample bytes are bounded by the receiver's reassembly budget.
 pub(crate) const MAX_FRAGMENTS_PER_SAMPLE: u32 = 1_048_576; // 2^20
 
 #[derive(Debug, Clone, PartialEq, Eq)]

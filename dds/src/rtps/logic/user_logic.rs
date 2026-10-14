@@ -69,7 +69,7 @@ use std::thread::{self, JoinHandle};
 /// How many in-progress fragmented samples a participant holds before the oldest are evicted.
 /// One entry per (writer, reader, sample), so several readers of one topic each take a slot.
 const FRAGMENT_BUFFER_LIMIT: usize = 128;
-// Bytes those buffers may reserve together; a lone sample larger than this is still admitted.
+// Bytes those buffers may reserve together; a sample whose buffers alone exceed this is refused.
 const FRAGMENT_BUFFER_BYTES: usize = 1024 * 1024 * 1024;
 // Payload one writer may pin waiting for a hole. In bytes because what it protects is the
 // allocator reuse the receive path needs, and a sample is a kilobyte or a megabyte.
@@ -543,8 +543,6 @@ fn select_eviction_victims(
         .collect();
     candidates.sort_by_key(|(complete, age, _, _)| (*complete, *age));
 
-    // If the excluded keys alone exceed the budget, this drains every other candidate.
-    // Intended: an oversized sample is still admitted, at the cost of all other buffers.
     let mut victims = Vec::new();
     for (_, _, key, size) in candidates {
         if !over(count, bytes) {
@@ -2845,6 +2843,27 @@ impl UserLogic {
         self.retain_fragment_buffers(|key| key.0 != writer_guid);
     }
 
+    /// Bytes `writer_guid`'s sample holds once every reader matched to it opens a buffer.
+    /// Counts all of them even for a directed repair, or repairs addressed one reader at a
+    /// time would slip a sample past the budget.
+    fn fragment_sample_footprint(
+        &self,
+        writer_guid: Guid,
+        addressed_reader_id: EntityId,
+        addressed_readers: usize,
+        total_size: u32,
+    ) -> RtpsResult<usize> {
+        let readers = if addressed_reader_id == EntityId::UNKNOWN {
+            addressed_readers
+        } else {
+            self.get_upgraded_participant()?
+                .find_reader_callback_leases_matched_with_remote_writer(writer_guid)?
+                .len()
+                .max(addressed_readers)
+        };
+        Ok((total_size as usize).saturating_mul(readers))
+    }
+
     // The only ways buffers enter or leave the map, so `fragment_buffer_bytes` stays exact.
     fn insert_fragment_buffer(
         &self,
@@ -3697,6 +3716,19 @@ impl UnicastMessageProcessor for UserLogic {
                 let mut buffer = match self.fragment_buffers.get_mut(&key) {
                     Some(buffer) => buffer,
                     None => {
+                        let footprint = self.fragment_sample_footprint(
+                            remote_writer_guid,
+                            data_frag.reader_id,
+                            matched_readers.len(),
+                            total_size,
+                        )?;
+                        if footprint > FRAGMENT_BUFFER_BYTES {
+                            warn!(
+                                "[UserLogic] Sample sn={:?} from {} needs {} bytes of reassembly buffers, over the {} byte budget; dropping its fragments",
+                                data_frag.writer_sn, remote_writer_guid, footprint, FRAGMENT_BUFFER_BYTES
+                            );
+                            continue;
+                        }
                         self.evict_fragment_buffers_if_full(
                             remote_writer_guid,
                             &matched_readers,
@@ -5994,13 +6026,43 @@ mod tests {
         assert_eq!(victims, vec![keys[0], keys[1]]);
     }
 
-    // A sample larger than the whole budget clears everything else, then is admitted anyway.
+    // A sample whose buffers for every matched reader exceed the budget is refused, never
+    // allocated, whether it arrives as a burst or as a repair addressed to one reader.
     #[test]
-    fn byte_budget_admits_a_lone_oversized_sample() {
-        let (buffers, keys) = incomplete_test_buffers(2);
-        let size = FRAG_TEST_SAMPLE_SIZE as usize;
-        let victims = select_eviction_victims(&buffers, held(&buffers), 128, size, 10 * size, &[]);
-        assert_eq!(victims, vec![keys[0], keys[1]]);
+    fn a_sample_over_the_byte_budget_is_refused() {
+        let (participant, mut user_logic, reader_a, _reader_b, writer_guid, sn) =
+            two_readers_matched_to_one_fragmented_writer();
+        let fragment_size: u16 = 1344;
+        // Fits the budget for one reader, not for the two matched.
+        let sample_size = (FRAGMENT_BUFFER_BYTES / 2 + 1) as u32;
+
+        for reader_id in [reader_a.guid().entity_id(), EntityId::UNKNOWN] {
+            let mut data_frag = DataFrag::new(
+                reader_id,
+                writer_guid.entity_id(),
+                sn,
+                1,
+                1,
+                fragment_size,
+                sample_size,
+            );
+            data_frag.add_serialized_data(SubmessagePayload::Owned(bytes::Bytes::from(vec![
+                0u8;
+                fragment_size as usize
+            ])));
+            let from_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 7400);
+            let message_receiver = MessageReceiver::new(participant.guid().prefix(), &from_addr);
+            user_logic
+                .handle_datafrag_message(
+                    &Header::new(writer_guid.prefix()),
+                    &data_frag,
+                    &message_receiver,
+                )
+                .expect("handle_datafrag_message must not error");
+
+            assert!(user_logic.fragment_buffers.is_empty(), "reader_id={:?}", reader_id);
+            assert_eq!(user_logic.fragment_buffer_bytes.load(Ordering::Relaxed), 0);
+        }
     }
 
     /// One reader matched to `n` distinct synthetic writers, all reliable and primed past
