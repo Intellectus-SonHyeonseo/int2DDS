@@ -109,7 +109,8 @@ pub struct Participant {
     remote_publications: Arc<DashMap<String, HashMap<Guid, PublicationBuiltinTopicData>>>,
     remote_subscriptions: Arc<DashMap<String, HashMap<Guid, SubscriptionBuiltinTopicData>>>,
 
-    // Remote writers and readers the application ignored. Entries are never removed.
+    // Remote participants, writers and readers the application ignored. Entries are never removed.
+    ignored_participants: Arc<DashSet<GuidPrefix>>,
     ignored_publications: Arc<DashSet<Guid>>,
     ignored_subscriptions: Arc<DashSet<Guid>>,
 
@@ -214,6 +215,7 @@ impl Participant {
             current_entity_id: Arc::new(Mutex::new([0, 0, 0])),
             remote_publications: Arc::new(DashMap::new()),
             remote_subscriptions: Arc::new(DashMap::new()),
+            ignored_participants: Arc::new(DashSet::new()),
             ignored_publications: Arc::new(DashSet::new()),
             ignored_subscriptions: Arc::new(DashSet::new()),
             subscriber_history_caches: Arc::new(Mutex::new(HashMap::new())),
@@ -282,6 +284,18 @@ impl Participant {
         self.remote_publications.clone()
     }
 
+    // Records the participant as ignored and removes it with all of its endpoints.
+    pub(crate) fn ignore_participant(&self, participant_prefix: GuidPrefix) -> RtpsResult<()> {
+        self.ignored_participants.insert(participant_prefix);
+        debug!("Ignoring remote participant {}", Guid::guid_prefix_to_string(&participant_prefix));
+
+        self.unmatch_with_remote_participant(&Guid::new(participant_prefix, EntityId::PARTICIPANT))
+    }
+
+    pub(crate) fn is_participant_ignored(&self, participant_prefix: GuidPrefix) -> bool {
+        self.ignored_participants.contains(&participant_prefix)
+    }
+
     // Records the writer as ignored and unmatches it from the local readers.
     pub(crate) fn ignore_publication(&self, writer_guid: Guid) -> RtpsResult<()> {
         self.ignored_publications.insert(writer_guid);
@@ -290,8 +304,10 @@ impl Participant {
         self.cleanup_remote_writer_by_guid(writer_guid)
     }
 
+    // True when the writer or its participant is ignored.
     pub(crate) fn is_publication_ignored(&self, writer_guid: Guid) -> bool {
         self.ignored_publications.contains(&writer_guid)
+            || self.is_participant_ignored(writer_guid.prefix())
     }
 
     // Records the reader as ignored and unmatches it from the local writers.
@@ -302,8 +318,10 @@ impl Participant {
         self.cleanup_remote_reader_by_guid(reader_guid)
     }
 
+    // True when the reader or its participant is ignored.
     pub(crate) fn is_subscription_ignored(&self, reader_guid: Guid) -> bool {
         self.ignored_subscriptions.contains(&reader_guid)
+            || self.is_participant_ignored(reader_guid.prefix())
     }
 
     // Registering the same Subscriber again replaces its entry, which every reader of that

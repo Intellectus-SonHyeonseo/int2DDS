@@ -3,6 +3,7 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+mod participant;
 mod publication;
 mod subscription;
 

@@ -670,7 +670,7 @@ impl DomainParticipant {
     }
 
     // TODO: RTPS layer implementation must be completed first (Built-in)
-    pub fn ignore_participant(&self, _handle: InstanceHandle) -> DdsResult<()> {
+    pub fn ignore_participant(&self, handle: InstanceHandle) -> DdsResult<()> {
         /*
             This operation allows the application to instruct the service to locally ignore a specific remote DomainParticipant.
             After this operation is called, the service will behave locally as if the remote participant does not exist.
@@ -692,25 +692,26 @@ impl DomainParticipant {
 
             Error codes that may be returned in addition to standard error codes: OUT_OF_RESOURCES.
         */
-        // match &self.rtps_participant {
-        //     None => DdsError::NotEnabled,
-        //     Some(participant) => {
-        //         if participant.ignore_participant(instance_handle_to_guid(handle).guid_prefix) {
-        //             DdsError::Ok
-        //         } else {
-        //             DdsError::BadParameter
-        //         }
-        //     }
-        // }
+        let _operation = self.lifecycle.begin_operation()?;
+        self.is_enabled()?;
+        self.reject_local_entity_handle(handle)?;
 
-        // Expected code..
-        // match self.is_enabled() {
-        //     DdsError::Ok => (),
-        //     err_code => return Err(err_code),
-        // }
-        // self.rtps_participant.ignore_participant(handle.to_guid().prefix())
+        let participant_prefix = handle.to_guid().prefix();
+        self.get_rtps_participant()?
+            .ignore_participant(participant_prefix)
+            .map_err(|e| DdsError::Error(e.message))?;
 
-        Err(DdsError::Unsupported)
+        // Every endpoint the participant announced loses its only writer.
+        self.revoke_sedp_writer_ownership_of_builtin_instances::<PublicationBuiltinTopicData>(
+            "DCPSPublication",
+            Guid::new(participant_prefix, EntityId::SEDP_BUILTIN_PUBLICATIONS_WRITER),
+            None,
+        )?;
+        self.revoke_sedp_writer_ownership_of_builtin_instances::<SubscriptionBuiltinTopicData>(
+            "DCPSSubscription",
+            Guid::new(participant_prefix, EntityId::SEDP_BUILTIN_SUBSCRIPTIONS_WRITER),
+            None,
+        )
     }
 
     // TODO: RTPS layer implementation must be completed first (Built-in)
@@ -741,10 +742,11 @@ impl DomainParticipant {
             .ignore_publication(handle.to_guid())
             .map_err(|e| DdsError::Error(e.message))?;
 
-        self.revoke_sedp_writer_ownership_of_builtin_instance::<PublicationBuiltinTopicData>(
+        // The remote SEDP writer stays matched, so only this instance loses its writer.
+        self.revoke_sedp_writer_ownership_of_builtin_instances::<PublicationBuiltinTopicData>(
             "DCPSPublication",
-            EntityId::SEDP_BUILTIN_PUBLICATIONS_WRITER,
-            handle,
+            Guid::new(handle.to_guid().prefix(), EntityId::SEDP_BUILTIN_PUBLICATIONS_WRITER),
+            Some(handle),
         )
     }
 
@@ -775,10 +777,11 @@ impl DomainParticipant {
             .ignore_subscription(handle.to_guid())
             .map_err(|e| DdsError::Error(e.message))?;
 
-        self.revoke_sedp_writer_ownership_of_builtin_instance::<SubscriptionBuiltinTopicData>(
+        // The remote SEDP writer stays matched, so only this instance loses its writer.
+        self.revoke_sedp_writer_ownership_of_builtin_instances::<SubscriptionBuiltinTopicData>(
             "DCPSSubscription",
-            EntityId::SEDP_BUILTIN_SUBSCRIPTIONS_WRITER,
-            handle,
+            Guid::new(handle.to_guid().prefix(), EntityId::SEDP_BUILTIN_SUBSCRIPTIONS_WRITER),
+            Some(handle),
         )
     }
 
@@ -2092,7 +2095,6 @@ impl DomainParticipant {
             Retrieves a list of DomainParticipants that the application has not specified to "ignore" through the ignore_participant operation.
             If the infrastructure does not maintain connectivity information locally
         */
-        // TODO: Filter out participants ignored via ignore_participant operation
         let _operation = self.lifecycle.begin_operation()?;
         let rtps_participant = self.get_rtps_participant()?;
         let proxy_datas = rtps_participant.remote_participant_proxy_datas();
@@ -2122,7 +2124,6 @@ impl DomainParticipant {
             The get_discovered_participants operation can be used to find currently discovered DomainParticipants.
             If the infrastructure does not maintain the information needed to fill participant_data,
         */
-        // TODO: Filter out participants ignored via ignore_participant operation
         let _operation = self.lifecycle.begin_operation()?;
         let participant_guid = participant_handle.to_guid();
         let rtps_participant = self.get_rtps_participant()?;
@@ -3086,27 +3087,21 @@ impl DomainParticipant {
         Ok(())
     }
 
-    // Marks the built-in topic instance NOT_ALIVE_NO_WRITERS while the remote SEDP writer that
-    // announced it stays matched.
-    fn revoke_sedp_writer_ownership_of_builtin_instance<Foo: 'static + Clone + Debug>(
+    // Marks the built-in topic instances announced by the SEDP writer NOT_ALIVE_NO_WRITERS. With
+    // None, every instance of that writer is marked.
+    fn revoke_sedp_writer_ownership_of_builtin_instances<Foo: 'static + Clone + Debug>(
         &self,
         builtin_topic_name: &str,
-        sedp_writer_entity_id: EntityId,
-        instance_handle: InstanceHandle,
+        sedp_writer_guid: Guid,
+        instance_handle: Option<InstanceHandle>,
     ) -> DdsResult<()> {
         let builtin_reader =
             self.get_builtin_subscriber()?.lookup_datareader::<Foo>(builtin_topic_name)?;
-        let sedp_writer_guid = Guid::new(instance_handle.to_guid().prefix(), sedp_writer_entity_id);
 
         let datareader_cache = builtin_reader.get_datareader_cache()?;
         let datareader_cache =
             datareader_cache.lock().map_err(|e| DdsError::Error(e.to_string()))?;
-        datareader_cache.revoke_writer_ownership(
-            sedp_writer_guid,
-            Some(instance_handle),
-            true,
-            true,
-        )?;
+        datareader_cache.revoke_writer_ownership(sedp_writer_guid, instance_handle, true, true)?;
 
         Ok(())
     }
