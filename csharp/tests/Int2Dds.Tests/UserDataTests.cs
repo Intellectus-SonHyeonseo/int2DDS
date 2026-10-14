@@ -18,6 +18,28 @@ namespace Int2Dds.Tests
                 var updated = new byte[] { 9, 8, 7, 6 };
                 dp.SetQos(new ParticipantQos { UserData = new UserData(updated) });
                 Assert.Equal(updated, dp.GetQos().UserData!.Data);
+
+                dp.SetQos(new ParticipantQos { UserData = new UserData(new byte[0]) });
+                Assert.Empty(dp.GetQos().UserData!.Data);
+            }
+        }
+
+        [Fact]
+        public void EndpointUserData_ClearedBySetQosWithEmptyData()
+        {
+            using (var dp = new DomainParticipant(75))
+            using (var topic = dp.CreateTopic<HelloWorld>("UserDataClearCs"))
+            {
+                var writer = dp.CreatePublisher().CreateDataWriter(
+                    topic, new DataWriterQos { UserData = new UserData(new byte[] { 0x10 }) });
+                var reader = dp.CreateSubscriber().CreateDataReader(
+                    topic, new DataReaderQos { UserData = new UserData(new byte[] { 0x20 }) });
+
+                writer.SetQos(new DataWriterQos { UserData = new UserData(new byte[0]) });
+                reader.SetQos(new DataReaderQos { UserData = new UserData(new byte[0]) });
+
+                Assert.Empty(writer.GetQos().UserData!.Data);
+                Assert.Empty(reader.GetQos().UserData!.Data);
             }
         }
 

@@ -31,6 +31,12 @@ namespace Int2Dds.Tests
 
                 Assert.Equal(pubUpdated, publisher.GetQos().GroupData!.Data);
                 Assert.Equal(subUpdated, subscriber.GetQos().GroupData!.Data);
+
+                publisher.SetQos(new PublisherQos { GroupData = new GroupData(new byte[0]) });
+                subscriber.SetQos(new SubscriberQos { GroupData = new GroupData(new byte[0]) });
+
+                Assert.Empty(publisher.GetQos().GroupData!.Data);
+                Assert.Empty(subscriber.GetQos().GroupData!.Data);
             }
         }
 

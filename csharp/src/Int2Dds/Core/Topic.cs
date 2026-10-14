@@ -541,7 +541,7 @@ namespace Int2Dds.Core
                 ReturnCodeHelper.CheckReturn(NativeMethods.int2dds_topic_qos_set_data_representation(
                     qosHandle, (int)qos.DataRepresentation.Kind));
 
-            if (qos.TopicData != null && qos.TopicData.Data != null && qos.TopicData.Data.Length > 0)
+            if (qos.TopicData != null && qos.TopicData.Data != null)
             {
                 unsafe
                 {

@@ -24,6 +24,9 @@ namespace Int2Dds.Tests
                 var updated = new byte[] { 4, 5, 6, 7 };
                 topic.SetQos(new TopicQos { TopicData = new TopicData(updated) });
                 Assert.Equal(updated, topic.GetQos().TopicData!.Data);
+
+                topic.SetQos(new TopicQos { TopicData = new TopicData(new byte[0]) });
+                Assert.Empty(topic.GetQos().TopicData!.Data);
             }
         }
 

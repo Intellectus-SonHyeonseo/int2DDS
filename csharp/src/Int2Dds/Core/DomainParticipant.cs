@@ -130,7 +130,7 @@ namespace Int2Dds.Core
         // core resolves properties and preserving values the caller did not override.
         private static void ApplyParticipantQos(IntPtr handle, ParticipantQos qos)
         {
-            if (qos.UserData != null && qos.UserData.Data != null && qos.UserData.Data.Length > 0)
+            if (qos.UserData != null && qos.UserData.Data != null)
             {
                 unsafe
                 {

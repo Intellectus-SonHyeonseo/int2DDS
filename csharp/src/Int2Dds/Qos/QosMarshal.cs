@@ -61,7 +61,7 @@ namespace Int2Dds.Qos
                 ReturnCodeHelper.CheckReturn(NativeMethods.int2dds_datawriter_qos_set_transport_priority(
                     qosHandle, qos.TransportPriority.Value));
 
-            if (qos.UserData != null && qos.UserData.Data != null && qos.UserData.Data.Length > 0)
+            if (qos.UserData != null && qos.UserData.Data != null)
             {
                 unsafe
                 {
@@ -174,7 +174,7 @@ namespace Int2Dds.Qos
                 ReturnCodeHelper.CheckReturn(NativeMethods.int2dds_datareader_qos_set_latency_budget(
                     qosHandle, qos.LatencyBudget.DurationNs));
 
-            if (qos.UserData != null && qos.UserData.Data != null && qos.UserData.Data.Length > 0)
+            if (qos.UserData != null && qos.UserData.Data != null)
             {
                 unsafe
                 {
@@ -258,7 +258,7 @@ namespace Int2Dds.Qos
                     qosHandle, (int)qos.Presentation.AccessScope, qos.Presentation.CoherentAccess,
                     qos.Presentation.OrderedAccess));
 
-            if (qos.GroupData != null && qos.GroupData.Data != null && qos.GroupData.Data.Length > 0)
+            if (qos.GroupData != null && qos.GroupData.Data != null)
             {
                 fixed (byte* pData = qos.GroupData.Data)
                 {
@@ -296,7 +296,7 @@ namespace Int2Dds.Qos
                     qosHandle, (int)qos.Presentation.AccessScope, qos.Presentation.CoherentAccess,
                     qos.Presentation.OrderedAccess));
 
-            if (qos.GroupData != null && qos.GroupData.Data != null && qos.GroupData.Data.Length > 0)
+            if (qos.GroupData != null && qos.GroupData.Data != null)
             {
                 fixed (byte* pData = qos.GroupData.Data)
                 {
