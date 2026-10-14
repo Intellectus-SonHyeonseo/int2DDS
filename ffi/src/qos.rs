@@ -28,7 +28,8 @@ use int2dds::{
     infrastructure::qos_policy::{
         DataRepresentationId, DataRepresentationQosPolicy, DestinationOrderQosPolicyKind,
         DurabilityQosPolicyKind, HistoryQosPolicyKind, LifespanReferenceQosPolicyKind,
-        LivelinessQosPolicyKind, OwnershipQosPolicyKind, ReliabilityQosPolicyKind,
+        LivelinessQosPolicyKind, OwnershipQosPolicyKind, PresentationQosAccessScopeKind,
+        PresentationQosPolicy, ReliabilityQosPolicyKind,
     },
     publication::qos::{DataWriterQos, PublisherQos},
     subscription::qos::{DataReaderQos, SubscriberQos},
@@ -89,6 +90,11 @@ pub const INT2DDS_QOS_OWNERSHIP_EXCLUSIVE: i32 = 1;
 // DestinationOrder kinds
 pub const INT2DDS_QOS_DEST_ORDER_BY_RECEPTION: i32 = 0;
 pub const INT2DDS_QOS_DEST_ORDER_BY_SOURCE: i32 = 1;
+
+// Presentation access scope kinds
+pub const INT2DDS_QOS_PRESENTATION_INSTANCE: i32 = 0;
+pub const INT2DDS_QOS_PRESENTATION_TOPIC: i32 = 1;
+pub const INT2DDS_QOS_PRESENTATION_GROUP: i32 = 2;
 
 // LifespanReference kinds
 pub const INT2DDS_QOS_LIFESPAN_REF_BY_SOURCE: i32 = 0;
@@ -2107,6 +2113,55 @@ pub unsafe extern "C" fn int2dds_publisher_qos_set_partition(
     INT2DDS_RET_OK
 }
 
+/// Set presentation QoS for Publisher
+///
+/// # Safety
+/// - `qos` must be a valid QoS handle
+/// - `access_scope` must be a valid presentation access scope kind (0=Instance, 1=Topic, 2=Group)
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_publisher_qos_set_presentation(
+    qos: *mut Int2DdsPublisherQos,
+    access_scope: i32,
+    coherent_access: bool,
+    ordered_access: bool,
+) -> Int2DdsRet {
+    check_null!(qos);
+
+    let Some(access_scope_kind) = presentation_access_scope_from_c(access_scope) else {
+        return INT2DDS_RET_INVALID_ARGUMENT;
+    };
+
+    (*qos).inner.presentation =
+        PresentationQosPolicy { access_scope: access_scope_kind, coherent_access, ordered_access };
+
+    INT2DDS_RET_OK
+}
+
+/// Get presentation QoS from Publisher QoS handle
+///
+/// # Safety
+/// - `qos` must be a valid publisher QoS handle
+/// - `access_scope_out`, `coherent_access_out` and `ordered_access_out` must be valid pointers
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_publisher_qos_get_presentation(
+    qos: *const Int2DdsPublisherQos,
+    access_scope_out: *mut i32,
+    coherent_access_out: *mut bool,
+    ordered_access_out: *mut bool,
+) -> Int2DdsRet {
+    check_null!(qos);
+    check_null!(access_scope_out);
+    check_null!(coherent_access_out);
+    check_null!(ordered_access_out);
+
+    let presentation = &(*qos).inner.presentation;
+    *access_scope_out = presentation_access_scope_to_c(&presentation.access_scope);
+    *coherent_access_out = presentation.coherent_access;
+    *ordered_access_out = presentation.ordered_access;
+
+    INT2DDS_RET_OK
+}
+
 /// Destroy Publisher QoS
 ///
 /// # Safety
@@ -2178,6 +2233,55 @@ pub unsafe extern "C" fn int2dds_subscriber_qos_set_partition(
     INT2DDS_RET_OK
 }
 
+/// Set presentation QoS for Subscriber
+///
+/// # Safety
+/// - `qos` must be a valid QoS handle
+/// - `access_scope` must be a valid presentation access scope kind (0=Instance, 1=Topic, 2=Group)
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_subscriber_qos_set_presentation(
+    qos: *mut Int2DdsSubscriberQos,
+    access_scope: i32,
+    coherent_access: bool,
+    ordered_access: bool,
+) -> Int2DdsRet {
+    check_null!(qos);
+
+    let Some(access_scope_kind) = presentation_access_scope_from_c(access_scope) else {
+        return INT2DDS_RET_INVALID_ARGUMENT;
+    };
+
+    (*qos).inner.presentation =
+        PresentationQosPolicy { access_scope: access_scope_kind, coherent_access, ordered_access };
+
+    INT2DDS_RET_OK
+}
+
+/// Get presentation QoS from Subscriber QoS handle
+///
+/// # Safety
+/// - `qos` must be a valid subscriber QoS handle
+/// - `access_scope_out`, `coherent_access_out` and `ordered_access_out` must be valid pointers
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_subscriber_qos_get_presentation(
+    qos: *const Int2DdsSubscriberQos,
+    access_scope_out: *mut i32,
+    coherent_access_out: *mut bool,
+    ordered_access_out: *mut bool,
+) -> Int2DdsRet {
+    check_null!(qos);
+    check_null!(access_scope_out);
+    check_null!(coherent_access_out);
+    check_null!(ordered_access_out);
+
+    let presentation = &(*qos).inner.presentation;
+    *access_scope_out = presentation_access_scope_to_c(&presentation.access_scope);
+    *coherent_access_out = presentation.coherent_access;
+    *ordered_access_out = presentation.ordered_access;
+
+    INT2DDS_RET_OK
+}
+
 /// Destroy Subscriber QoS
 ///
 /// # Safety
@@ -2191,6 +2295,23 @@ pub unsafe extern "C" fn int2dds_subscriber_qos_destroy(
     }
     let _ = Box::from_raw(qos);
     INT2DDS_RET_OK
+}
+
+fn presentation_access_scope_from_c(access_scope: i32) -> Option<PresentationQosAccessScopeKind> {
+    match access_scope {
+        INT2DDS_QOS_PRESENTATION_INSTANCE => Some(PresentationQosAccessScopeKind::Instance),
+        INT2DDS_QOS_PRESENTATION_TOPIC => Some(PresentationQosAccessScopeKind::Topic),
+        INT2DDS_QOS_PRESENTATION_GROUP => Some(PresentationQosAccessScopeKind::Group),
+        _ => None,
+    }
+}
+
+pub(crate) fn presentation_access_scope_to_c(access_scope: &PresentationQosAccessScopeKind) -> i32 {
+    match access_scope {
+        PresentationQosAccessScopeKind::Instance => INT2DDS_QOS_PRESENTATION_INSTANCE,
+        PresentationQosAccessScopeKind::Topic => INT2DDS_QOS_PRESENTATION_TOPIC,
+        PresentationQosAccessScopeKind::Group => INT2DDS_QOS_PRESENTATION_GROUP,
+    }
 }
 
 #[cfg(test)]
@@ -2394,6 +2515,92 @@ mod tests {
 
             let ret = int2dds_publisher_qos_destroy(qos);
             assert_eq!(ret, INT2DDS_RET_OK);
+        }
+    }
+
+    #[test]
+    fn publisher_qos_presentation_round_trip() {
+        unsafe {
+            let mut qos: *mut Int2DdsPublisherQos = ptr::null_mut();
+            assert_eq!(int2dds_publisher_qos_create_default(&mut qos), INT2DDS_RET_OK);
+
+            assert_eq!(
+                int2dds_publisher_qos_set_presentation(
+                    qos,
+                    INT2DDS_QOS_PRESENTATION_GROUP,
+                    true,
+                    true
+                ),
+                INT2DDS_RET_OK
+            );
+
+            let (mut access_scope, mut coherent_access, mut ordered_access) = (-1, false, false);
+            assert_eq!(
+                int2dds_publisher_qos_get_presentation(
+                    qos,
+                    &mut access_scope,
+                    &mut coherent_access,
+                    &mut ordered_access
+                ),
+                INT2DDS_RET_OK
+            );
+
+            assert_eq!(access_scope, INT2DDS_QOS_PRESENTATION_GROUP);
+            assert!(coherent_access);
+            assert!(ordered_access);
+
+            assert_eq!(int2dds_publisher_qos_destroy(qos), INT2DDS_RET_OK);
+        }
+    }
+
+    #[test]
+    fn subscriber_qos_presentation_round_trip() {
+        unsafe {
+            let mut qos: *mut Int2DdsSubscriberQos = ptr::null_mut();
+            assert_eq!(int2dds_subscriber_qos_create_default(&mut qos), INT2DDS_RET_OK);
+
+            assert_eq!(
+                int2dds_subscriber_qos_set_presentation(
+                    qos,
+                    INT2DDS_QOS_PRESENTATION_TOPIC,
+                    true,
+                    false
+                ),
+                INT2DDS_RET_OK
+            );
+
+            let (mut access_scope, mut coherent_access, mut ordered_access) = (-1, false, true);
+            assert_eq!(
+                int2dds_subscriber_qos_get_presentation(
+                    qos,
+                    &mut access_scope,
+                    &mut coherent_access,
+                    &mut ordered_access
+                ),
+                INT2DDS_RET_OK
+            );
+
+            assert_eq!(access_scope, INT2DDS_QOS_PRESENTATION_TOPIC);
+            assert!(coherent_access);
+            assert!(!ordered_access);
+
+            assert_eq!(int2dds_subscriber_qos_destroy(qos), INT2DDS_RET_OK);
+        }
+    }
+
+    #[test]
+    fn presentation_rejects_unknown_access_scope() {
+        unsafe {
+            let mut qos: *mut Int2DdsPublisherQos = ptr::null_mut();
+            assert_eq!(int2dds_publisher_qos_create_default(&mut qos), INT2DDS_RET_OK);
+
+            assert_eq!(
+                int2dds_publisher_qos_set_presentation(qos, 3, true, true),
+                INT2DDS_RET_INVALID_ARGUMENT
+            );
+            assert_eq!((*qos).inner.presentation, PresentationQosPolicy::default());
+
+            assert_eq!(int2dds_publisher_qos_destroy(qos), INT2DDS_RET_OK);
         }
     }
 

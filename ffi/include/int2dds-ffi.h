@@ -103,6 +103,12 @@
 
 #define INT2DDS_QOS_DEST_ORDER_BY_SOURCE 1
 
+#define INT2DDS_QOS_PRESENTATION_INSTANCE 0
+
+#define INT2DDS_QOS_PRESENTATION_TOPIC 1
+
+#define INT2DDS_QOS_PRESENTATION_GROUP 2
+
 #define INT2DDS_QOS_LIFESPAN_REF_BY_SOURCE 0
 
 #define INT2DDS_QOS_LIFESPAN_REF_BY_RECEPTION 1
@@ -1465,6 +1471,18 @@ Int2DdsRet int2dds_publication_builtin_topic_data_get_user_data(const struct Int
                                                                 uintptr_t *size_out);
 
 /**
+ * Get the presentation QoS from a PublicationBuiltinTopicData.
+ *
+ * # Safety
+ * - `data` must be a valid PublicationBuiltinTopicData
+ * - `access_scope_out`, `coherent_access_out` and `ordered_access_out` must be valid pointers
+ */
+Int2DdsRet int2dds_publication_builtin_topic_data_get_presentation(const struct Int2DdsPublicationBuiltinTopicData *data,
+                                                                   int32_t *access_scope_out,
+                                                                   bool *coherent_access_out,
+                                                                   bool *ordered_access_out);
+
+/**
  * Free a PublicationBuiltinTopicData obtained from discovery.
  *
  * # Safety
@@ -1608,6 +1626,18 @@ Int2DdsRet int2dds_subscription_builtin_topic_data_get_user_data(const struct In
                                                                  uint8_t *buf,
                                                                  uintptr_t capacity,
                                                                  uintptr_t *size_out);
+
+/**
+ * Get the presentation QoS from a SubscriptionBuiltinTopicData.
+ *
+ * # Safety
+ * - `data` must be a valid SubscriptionBuiltinTopicData
+ * - `access_scope_out`, `coherent_access_out` and `ordered_access_out` must be valid pointers
+ */
+Int2DdsRet int2dds_subscription_builtin_topic_data_get_presentation(const struct Int2DdsSubscriptionBuiltinTopicData *data,
+                                                                    int32_t *access_scope_out,
+                                                                    bool *coherent_access_out,
+                                                                    bool *ordered_access_out);
 
 /**
  * Free a SubscriptionBuiltinTopicData obtained from discovery.
@@ -2824,6 +2854,27 @@ Int2DdsRet int2dds_publisher_get_qos(const struct Int2DdsPublisher *publisher,
  */
 Int2DdsRet int2dds_publisher_get_instance_handle(const struct Int2DdsPublisher *publisher,
                                                  uint8_t (*handle_out)[16]);
+
+/**
+ * Begin a coherent set on a Publisher.
+ *
+ * Samples written by the Publisher's DataWriters until the matching
+ * `int2dds_publisher_end_coherent_changes` form one coherent set. Calls may be nested.
+ *
+ * # Safety
+ * - `publisher` must be a valid publisher
+ */
+Int2DdsRet int2dds_publisher_begin_coherent_changes(const struct Int2DdsPublisher *publisher);
+
+/**
+ * End the coherent set started by `int2dds_publisher_begin_coherent_changes`.
+ *
+ * Returns PRECONDITION_NOT_MET without a matching begin call.
+ *
+ * # Safety
+ * - `publisher` must be a valid publisher
+ */
+Int2DdsRet int2dds_publisher_end_coherent_changes(const struct Int2DdsPublisher *publisher);
 
 /**
  * Set QoS on a DataWriter
@@ -4114,6 +4165,30 @@ Int2DdsRet int2dds_publisher_qos_set_partition(struct Int2DdsPublisherQos *qos,
                                                uintptr_t partition_count);
 
 /**
+ * Set presentation QoS for Publisher
+ *
+ * # Safety
+ * - `qos` must be a valid QoS handle
+ * - `access_scope` must be a valid presentation access scope kind (0=Instance, 1=Topic, 2=Group)
+ */
+Int2DdsRet int2dds_publisher_qos_set_presentation(struct Int2DdsPublisherQos *qos,
+                                                  int32_t access_scope,
+                                                  bool coherent_access,
+                                                  bool ordered_access);
+
+/**
+ * Get presentation QoS from Publisher QoS handle
+ *
+ * # Safety
+ * - `qos` must be a valid publisher QoS handle
+ * - `access_scope_out`, `coherent_access_out` and `ordered_access_out` must be valid pointers
+ */
+Int2DdsRet int2dds_publisher_qos_get_presentation(const struct Int2DdsPublisherQos *qos,
+                                                  int32_t *access_scope_out,
+                                                  bool *coherent_access_out,
+                                                  bool *ordered_access_out);
+
+/**
  * Destroy Publisher QoS
  *
  * # Safety
@@ -4139,6 +4214,30 @@ Int2DdsRet int2dds_subscriber_qos_create_default(struct Int2DdsSubscriberQos **q
 Int2DdsRet int2dds_subscriber_qos_set_partition(struct Int2DdsSubscriberQos *qos,
                                                 const char *const *partitions,
                                                 uintptr_t partition_count);
+
+/**
+ * Set presentation QoS for Subscriber
+ *
+ * # Safety
+ * - `qos` must be a valid QoS handle
+ * - `access_scope` must be a valid presentation access scope kind (0=Instance, 1=Topic, 2=Group)
+ */
+Int2DdsRet int2dds_subscriber_qos_set_presentation(struct Int2DdsSubscriberQos *qos,
+                                                   int32_t access_scope,
+                                                   bool coherent_access,
+                                                   bool ordered_access);
+
+/**
+ * Get presentation QoS from Subscriber QoS handle
+ *
+ * # Safety
+ * - `qos` must be a valid subscriber QoS handle
+ * - `access_scope_out`, `coherent_access_out` and `ordered_access_out` must be valid pointers
+ */
+Int2DdsRet int2dds_subscriber_qos_get_presentation(const struct Int2DdsSubscriberQos *qos,
+                                                   int32_t *access_scope_out,
+                                                   bool *coherent_access_out,
+                                                   bool *ordered_access_out);
 
 /**
  * Destroy Subscriber QoS
@@ -4484,6 +4583,58 @@ Int2DdsRet int2dds_subscriber_get_qos(const struct Int2DdsSubscriber *subscriber
  */
 Int2DdsRet int2dds_subscriber_get_instance_handle(const struct Int2DdsSubscriber *subscriber,
                                                   uint8_t (*handle_out)[16]);
+
+/**
+ * Begin a sample access block on a Subscriber.
+ *
+ * Required before reading or calling `int2dds_subscriber_get_datareaders` under
+ * GROUP access scope. Has no effect under other access scopes. Calls may be nested.
+ *
+ * # Safety
+ * - `subscriber` must be a valid subscriber
+ */
+Int2DdsRet int2dds_subscriber_begin_access(const struct Int2DdsSubscriber *subscriber);
+
+/**
+ * End the sample access block started by `int2dds_subscriber_begin_access`.
+ *
+ * Returns PRECONDITION_NOT_MET under GROUP access scope without a matching begin call.
+ *
+ * # Safety
+ * - `subscriber` must be a valid subscriber
+ */
+Int2DdsRet int2dds_subscriber_end_access(const struct Int2DdsSubscriber *subscriber);
+
+/**
+ * Get the DataReaders of a Subscriber that hold samples matching the state masks.
+ *
+ * Writes up to `capacity` reader instance handles into `handles_out`. A handle equals
+ * the bytes from `int2dds_datareader_get_guid`. `count_out` receives the total count
+ * (may be greater than `capacity`). Under GROUP access scope with ordered access the
+ * result is a list in sample order and a reader may appear more than once.
+ * A state mask of 0 selects "any".
+ *
+ * # Safety
+ * - `subscriber` must be a valid subscriber
+ * - `handles_out` may be null to query only the count; otherwise it must point to
+ *   `capacity` 16-byte handles
+ * - `count_out` must be a valid pointer
+ */
+Int2DdsRet int2dds_subscriber_get_datareaders(const struct Int2DdsSubscriber *subscriber,
+                                              uint32_t sample_state_mask,
+                                              uint32_t view_state_mask,
+                                              uint32_t instance_state_mask,
+                                              uint8_t (*handles_out)[16],
+                                              uintptr_t capacity,
+                                              uintptr_t *count_out);
+
+/**
+ * Invoke the on_data_available listener of every DataReader of a Subscriber.
+ *
+ * # Safety
+ * - `subscriber` must be a valid subscriber
+ */
+Int2DdsRet int2dds_subscriber_notify_datareaders(const struct Int2DdsSubscriber *subscriber);
 
 /**
  * Delete a Subscriber
