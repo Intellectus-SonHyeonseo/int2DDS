@@ -389,6 +389,11 @@ impl<Foo: 'static + Clone> EnableChild for DataWriter<Foo> {
         Ok(())
     }
     fn update_rtps_entity(&self, qos: &Self::Qos) -> DdsResult<()> {
+        // A disabled writer has no RTPS writer yet. Enabling it announces the current QoS.
+        if self.is_enabled().is_err() {
+            return Ok(());
+        }
+
         let publisher = self.get_publisher()?;
         let topic = self.get_topic()?;
         let publisher_qos = publisher.get_qos_arc()?;

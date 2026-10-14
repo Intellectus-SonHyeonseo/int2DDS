@@ -43,6 +43,16 @@ fn create_entities(
             ..Default::default()
         },
     );
+
+    create_endpoints(participant, writer_user_data, reader_user_data)
+}
+
+// Endpoints created on a disabled participant stay disabled until the participant is enabled.
+fn create_endpoints(
+    participant: DomainParticipant,
+    writer_user_data: &[u8],
+    reader_user_data: &[u8],
+) -> UserDataEntities {
     let topic = create_topic(&participant);
 
     let data_writer = participant
@@ -232,10 +242,14 @@ fn user_data_change_is_visible_to_remote_entities() {
 }
 
 #[test]
-fn participant_user_data_set_while_disabled_is_visible_after_enable() {
+fn user_data_set_while_disabled_is_visible_after_enable() {
     let domain_id = next_domain_id();
-    let initial_user_data = b"initial-user-data".to_vec();
-    let changed_user_data = b"changed-user-data".to_vec();
+    let initial_participant_user_data = b"initial-participant-user-data".to_vec();
+    let initial_writer_user_data = b"initial-datawriter-user-data".to_vec();
+    let initial_reader_user_data = b"initial-datareader-user-data".to_vec();
+    let changed_participant_user_data = b"changed-participant-user-data".to_vec();
+    let changed_writer_user_data = b"changed-datawriter-user-data".to_vec();
+    let changed_reader_user_data = b"changed-datareader-user-data".to_vec();
     let factory = DomainParticipantFactory::get_instance();
 
     let original_factory_qos = factory.get_qos().unwrap();
@@ -248,7 +262,7 @@ fn participant_user_data_set_while_disabled_is_visible_after_enable() {
         .create_participant(
             domain_id,
             DomainParticipantQos {
-                user_data: UserDataQosPolicy { value: initial_user_data.clone() },
+                user_data: UserDataQosPolicy { value: initial_participant_user_data.clone() },
                 ..Default::default()
             },
             None,
@@ -257,23 +271,42 @@ fn participant_user_data_set_while_disabled_is_visible_after_enable() {
         .unwrap();
     factory.set_qos(original_factory_qos).unwrap();
 
-    let receiving_participant = create_participant(domain_id, DomainParticipantQos::default());
+    let sending =
+        create_endpoints(sending_participant, &initial_writer_user_data, &initial_reader_user_data);
+    let receiving = create_entities(domain_id, &[], &[], &[]);
 
-    let mut changed_qos = sending_participant.get_qos().unwrap();
-    changed_qos.user_data = UserDataQosPolicy { value: changed_user_data.clone() };
-    sending_participant.set_qos(changed_qos).unwrap();
+    let mut changed_participant_qos = sending.participant.get_qos().unwrap();
+    changed_participant_qos.user_data =
+        UserDataQosPolicy { value: changed_participant_user_data.clone() };
+    sending.participant.set_qos(changed_participant_qos).unwrap();
 
-    sending_participant.enable().unwrap();
+    let mut changed_writer_qos = sending.data_writer.get_qos().unwrap();
+    changed_writer_qos.user_data = UserDataQosPolicy { value: changed_writer_user_data.clone() };
+    sending.data_writer.set_qos(changed_writer_qos).unwrap();
 
-    let sending_handle = sending_participant.get_instance_handle().unwrap();
+    let mut changed_reader_qos = sending.data_reader.get_qos().unwrap();
+    changed_reader_qos.user_data = UserDataQosPolicy { value: changed_reader_user_data.clone() };
+    sending.data_reader.set_qos(changed_reader_qos).unwrap();
 
-    let received_user_data = wait_for(|| {
-        let participant_data =
-            receiving_participant.get_discovered_participant_data(sending_handle).ok()?;
-        Some(participant_data.user_data().value.clone())
-    });
-    assert_eq!(received_user_data, Some(changed_user_data));
+    sending.participant.enable().unwrap();
 
-    delete_participant(sending_participant);
-    delete_participant(receiving_participant);
+    let participant_handle = sending.participant.get_instance_handle().unwrap();
+    let writer_handle = sending.data_writer.get_instance_handle().unwrap();
+    let reader_handle = sending.data_reader.get_instance_handle().unwrap();
+
+    // The first value received must already be the changed one.
+    let received_participant_user_data =
+        wait_for(|| discovered_participant_user_data(&receiving, participant_handle));
+    assert_eq!(received_participant_user_data, Some(changed_participant_user_data));
+
+    let received_writer_user_data =
+        wait_for(|| matched_publication_user_data(&receiving, writer_handle));
+    assert_eq!(received_writer_user_data, Some(changed_writer_user_data));
+
+    let received_reader_user_data =
+        wait_for(|| matched_subscription_user_data(&receiving, reader_handle));
+    assert_eq!(received_reader_user_data, Some(changed_reader_user_data));
+
+    delete_entities(sending);
+    delete_entities(receiving);
 }

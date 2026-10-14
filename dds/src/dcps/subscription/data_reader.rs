@@ -478,6 +478,11 @@ impl<Foo: 'static + Clone + Debug> EnableChild for DataReader<Foo> {
         Ok(())
     }
     fn update_rtps_entity(&self, qos: &Self::Qos) -> DdsResult<()> {
+        // A disabled reader has no RTPS reader yet. Enabling it announces the current QoS.
+        if self.is_enabled().is_err() {
+            return Ok(());
+        }
+
         let subscriber = self.get_subscriber()?;
         let topic = self.get_topic()?;
         let subscriber_qos = subscriber.get_qos_arc()?;
