@@ -187,6 +187,11 @@ class TopicData:
 
 
 @dataclass
+class GroupData:
+    data: bytes = b""
+
+
+@dataclass
 class WriterDataLifecycle:
     autodispose_unregistered_instances: bool = True
 
@@ -364,12 +369,14 @@ class TopicQos:
 class PublisherQos:
     partition: Partition | None = None
     presentation: Presentation | None = None
+    group_data: GroupData | None = None
 
 
 @dataclass
 class SubscriberQos:
     partition: Partition | None = None
     presentation: Presentation | None = None
+    group_data: GroupData | None = None
 
 
 @dataclass

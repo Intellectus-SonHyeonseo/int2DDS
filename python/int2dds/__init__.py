@@ -17,6 +17,7 @@ try:
         Deadline,
         DestinationOrder,
         Durability,
+        GroupData,
         History,
         LatencyBudget,
         Lifespan,
@@ -115,6 +116,7 @@ __all__ = [
     "Presentation",
     "PresentationAccessScope",
     "TopicData",
+    "GroupData",
     # Conditions
     "WaitSet",
     "Condition",

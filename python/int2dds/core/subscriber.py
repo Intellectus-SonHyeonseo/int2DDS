@@ -141,6 +141,10 @@ def _apply_subscriber_qos(handle: CData, qos: "SubscriberQos") -> None:
             qos.presentation._access_scope_int,
             qos.presentation.coherent_access,
             qos.presentation.ordered_access))
+    if qos.group_data is not None:
+        data_ptr = ffi.from_buffer(qos.group_data.data) if qos.group_data.data else ffi.NULL
+        check_ret(lib.int2dds_subscriber_qos_set_group_data(
+            handle, data_ptr, len(qos.group_data.data)))
 
 
 class Subscriber:
@@ -242,10 +246,13 @@ class Subscriber:
     def get_qos(self) -> "SubscriberQos":
         """Return the effective QoS in force.
 
-        Reports the policies with a native getter (presentation). ``partition``
-        has no native getter and is left unset.
+        Reports the policies with a native getter (presentation, group_data).
+        ``partition`` has no native getter and is left unset.
         """
-        from int2dds.core.qos import Presentation, PresentationAccessScope, SubscriberQos
+        from int2dds.core.discovery import _read_bytes
+        from int2dds.core.qos import (
+            GroupData, Presentation, PresentationAccessScope, SubscriberQos,
+        )
 
         qos_ptr = ffi.new("Int2DdsSubscriberQos **")
         check_ret(lib.int2dds_subscriber_get_qos(self._handle, qos_ptr))
@@ -256,6 +263,7 @@ class Subscriber:
             ordered_access = ffi.new("bool *")
             check_ret(lib.int2dds_subscriber_qos_get_presentation(
                 handle, access_scope, coherent_access, ordered_access))
+            group_data = _read_bytes(lib.int2dds_subscriber_qos_get_group_data, handle)
         finally:
             lib.int2dds_subscriber_qos_destroy(handle)
 
@@ -265,6 +273,7 @@ class Subscriber:
                 coherent_access=bool(coherent_access[0]),
                 ordered_access=bool(ordered_access[0]),
             ),
+            group_data=GroupData(data=group_data),
         )
 
     def set_qos(self, qos: "SubscriberQos") -> None:

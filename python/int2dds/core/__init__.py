@@ -21,6 +21,7 @@ from int2dds.core.qos import (
     DataReaderQos,
     DataWriterQos,
     Durability,
+    GroupData,
     History,
     Presentation,
     PresentationAccessScope,
@@ -57,4 +58,5 @@ __all__ = [
     "Presentation",
     "PresentationAccessScope",
     "TopicData",
+    "GroupData",
 ]
