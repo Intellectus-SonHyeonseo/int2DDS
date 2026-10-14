@@ -784,6 +784,28 @@ pub unsafe extern "C" fn int2dds_datawriter_qos_get_writer_data_lifecycle(
     INT2DDS_RET_OK
 }
 
+/// Get user data from DataWriter QoS handle
+/// Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+///
+/// # Safety
+/// - `qos` must be a valid datawriter QoS handle
+/// - `buf` must be valid for `capacity` bytes, or null to query the size only
+/// - `size_out` must be a valid pointer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_datawriter_qos_get_user_data(
+    qos: *const Int2DdsDataWriterQos,
+    buf: *mut u8,
+    capacity: usize,
+    size_out: *mut usize,
+) -> Int2DdsRet {
+    check_null!(qos);
+    check_null!(size_out);
+
+    copy_octets_to_c(&(*qos).inner.user_data.value, buf, capacity, size_out);
+
+    INT2DDS_RET_OK
+}
+
 /// Destroy DataWriter QoS
 ///
 /// # Safety
@@ -1316,6 +1338,28 @@ pub unsafe extern "C" fn int2dds_datareader_qos_get_data_representation(
     INT2DDS_RET_OK
 }
 
+/// Get user data from DataReader QoS handle
+/// Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+///
+/// # Safety
+/// - `qos` must be a valid datareader QoS handle
+/// - `buf` must be valid for `capacity` bytes, or null to query the size only
+/// - `size_out` must be a valid pointer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_datareader_qos_get_user_data(
+    qos: *const Int2DdsDataReaderQos,
+    buf: *mut u8,
+    capacity: usize,
+    size_out: *mut usize,
+) -> Int2DdsRet {
+    check_null!(qos);
+    check_null!(size_out);
+
+    copy_octets_to_c(&(*qos).inner.user_data.value, buf, capacity, size_out);
+
+    INT2DDS_RET_OK
+}
+
 /// # Safety
 /// - `qos` must be a valid datareader QoS handle
 /// - `duration_ns_out` must be a valid pointer
@@ -1725,6 +1769,28 @@ pub unsafe extern "C" fn int2dds_participant_qos_set_user_data(
 
     check_null!(data);
     qos_ref.inner.user_data.value = std::slice::from_raw_parts(data, data_len).to_vec();
+
+    INT2DDS_RET_OK
+}
+
+/// Get user data from DomainParticipant QoS handle
+/// Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+///
+/// # Safety
+/// - `qos` must be a valid participant QoS handle
+/// - `buf` must be valid for `capacity` bytes, or null to query the size only
+/// - `size_out` must be a valid pointer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_participant_qos_get_user_data(
+    qos: *const Int2DdsParticipantQos,
+    buf: *mut u8,
+    capacity: usize,
+    size_out: *mut usize,
+) -> Int2DdsRet {
+    check_null!(qos);
+    check_null!(size_out);
+
+    copy_octets_to_c(&(*qos).inner.user_data.value, buf, capacity, size_out);
 
     INT2DDS_RET_OK
 }
@@ -2314,6 +2380,16 @@ pub(crate) fn presentation_access_scope_to_c(access_scope: &PresentationQosAcces
     }
 }
 
+// Writes the full length to `size_out` and copies at most `capacity` bytes into a non-null `buf`.
+unsafe fn copy_octets_to_c(value: &[u8], buf: *mut u8, capacity: usize, size_out: *mut usize) {
+    *size_out = value.len();
+
+    if !buf.is_null() && capacity > 0 {
+        let copy_len = std::cmp::min(value.len(), capacity);
+        std::ptr::copy_nonoverlapping(value.as_ptr(), buf, copy_len);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2601,6 +2677,87 @@ mod tests {
             assert_eq!((*qos).inner.presentation, PresentationQosPolicy::default());
 
             assert_eq!(int2dds_publisher_qos_destroy(qos), INT2DDS_RET_OK);
+        }
+    }
+
+    #[test]
+    fn participant_qos_user_data_round_trip() {
+        unsafe {
+            let mut qos: *mut Int2DdsParticipantQos = ptr::null_mut();
+            assert_eq!(int2dds_participant_qos_create_default(&mut qos), INT2DDS_RET_OK);
+            assert_eq!(
+                int2dds_participant_qos_set_user_data(qos, b"participant".as_ptr(), 11),
+                INT2DDS_RET_OK
+            );
+
+            let mut size = 0usize;
+            assert_eq!(
+                int2dds_participant_qos_get_user_data(qos, ptr::null_mut(), 0, &mut size),
+                INT2DDS_RET_OK
+            );
+            assert_eq!(size, 11);
+
+            let mut buf = [0u8; 11];
+            assert_eq!(
+                int2dds_participant_qos_get_user_data(qos, buf.as_mut_ptr(), buf.len(), &mut size),
+                INT2DDS_RET_OK
+            );
+            assert_eq!(&buf, b"participant");
+
+            assert_eq!(int2dds_participant_qos_destroy(qos), INT2DDS_RET_OK);
+        }
+    }
+
+    #[test]
+    fn datawriter_qos_user_data_copies_at_most_capacity() {
+        unsafe {
+            let mut qos: *mut Int2DdsDataWriterQos = ptr::null_mut();
+            assert_eq!(int2dds_datawriter_qos_create_default(&mut qos), INT2DDS_RET_OK);
+            assert_eq!(
+                int2dds_datawriter_qos_set_user_data(qos, b"writer".as_ptr(), 6),
+                INT2DDS_RET_OK
+            );
+
+            let mut size = 0usize;
+            let mut buf = [0u8; 4];
+            assert_eq!(
+                int2dds_datawriter_qos_get_user_data(qos, buf.as_mut_ptr(), buf.len(), &mut size),
+                INT2DDS_RET_OK
+            );
+            assert_eq!(size, 6);
+            assert_eq!(&buf, b"writ");
+
+            assert_eq!(int2dds_datawriter_qos_destroy(qos), INT2DDS_RET_OK);
+        }
+    }
+
+    #[test]
+    fn datareader_qos_user_data_round_trip() {
+        unsafe {
+            let mut qos: *mut Int2DdsDataReaderQos = ptr::null_mut();
+            assert_eq!(int2dds_datareader_qos_create_default(&mut qos), INT2DDS_RET_OK);
+
+            let mut size = usize::MAX;
+            assert_eq!(
+                int2dds_datareader_qos_get_user_data(qos, ptr::null_mut(), 0, &mut size),
+                INT2DDS_RET_OK
+            );
+            assert_eq!(size, 0);
+
+            assert_eq!(
+                int2dds_datareader_qos_set_user_data(qos, b"reader".as_ptr(), 6),
+                INT2DDS_RET_OK
+            );
+
+            let mut buf = [0u8; 6];
+            assert_eq!(
+                int2dds_datareader_qos_get_user_data(qos, buf.as_mut_ptr(), buf.len(), &mut size),
+                INT2DDS_RET_OK
+            );
+            assert_eq!(size, 6);
+            assert_eq!(&buf, b"reader");
+
+            assert_eq!(int2dds_datareader_qos_destroy(qos), INT2DDS_RET_OK);
         }
     }
 

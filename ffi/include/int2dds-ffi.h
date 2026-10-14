@@ -3616,6 +3616,20 @@ Int2DdsRet int2dds_datawriter_qos_get_writer_data_lifecycle(const struct Int2Dds
                                                             bool *autodispose_out);
 
 /**
+ * Get user data from DataWriter QoS handle
+ * Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+ *
+ * # Safety
+ * - `qos` must be a valid datawriter QoS handle
+ * - `buf` must be valid for `capacity` bytes, or null to query the size only
+ * - `size_out` must be a valid pointer
+ */
+Int2DdsRet int2dds_datawriter_qos_get_user_data(const struct Int2DdsDataWriterQos *qos,
+                                                uint8_t *buf,
+                                                uintptr_t capacity,
+                                                uintptr_t *size_out);
+
+/**
  * Destroy DataWriter QoS
  *
  * # Safety
@@ -3846,6 +3860,20 @@ Int2DdsRet int2dds_datareader_qos_get_data_representation(const struct Int2DdsDa
                                                           int32_t *kind_out);
 
 /**
+ * Get user data from DataReader QoS handle
+ * Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+ *
+ * # Safety
+ * - `qos` must be a valid datareader QoS handle
+ * - `buf` must be valid for `capacity` bytes, or null to query the size only
+ * - `size_out` must be a valid pointer
+ */
+Int2DdsRet int2dds_datareader_qos_get_user_data(const struct Int2DdsDataReaderQos *qos,
+                                                uint8_t *buf,
+                                                uintptr_t capacity,
+                                                uintptr_t *size_out);
+
+/**
  * # Safety
  * - `qos` must be a valid datareader QoS handle
  * - `duration_ns_out` must be a valid pointer
@@ -4020,6 +4048,20 @@ Int2DdsRet int2dds_participant_qos_create_default(struct Int2DdsParticipantQos *
 Int2DdsRet int2dds_participant_qos_set_user_data(struct Int2DdsParticipantQos *qos,
                                                  const uint8_t *data,
                                                  uintptr_t data_len);
+
+/**
+ * Get user data from DomainParticipant QoS handle
+ * Copies up to `capacity` bytes into `buf`. `size_out` receives the actual size.
+ *
+ * # Safety
+ * - `qos` must be a valid participant QoS handle
+ * - `buf` must be valid for `capacity` bytes, or null to query the size only
+ * - `size_out` must be a valid pointer
+ */
+Int2DdsRet int2dds_participant_qos_get_user_data(const struct Int2DdsParticipantQos *qos,
+                                                 uint8_t *buf,
+                                                 uintptr_t capacity,
+                                                 uintptr_t *size_out);
 
 /**
  * Add or overwrite a text property by name (PropertyQosPolicy).
