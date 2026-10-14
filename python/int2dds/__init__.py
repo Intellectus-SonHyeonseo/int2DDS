@@ -26,6 +26,8 @@ try:
         OwnershipStrength,
         Partition,
         ParticipantQos,
+        Presentation,
+        PresentationAccessScope,
         Property,
         PublisherQos,
         ReaderDataLifecycle,
@@ -109,6 +111,8 @@ __all__ = [
     "Reliability",
     "Durability",
     "History",
+    "Presentation",
+    "PresentationAccessScope",
     # Conditions
     "WaitSet",
     "Condition",

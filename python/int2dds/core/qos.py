@@ -52,6 +52,12 @@ class DataRepresentationKind(IntEnum):
     XCDR2 = 2
 
 
+class PresentationAccessScope(IntEnum):
+    INSTANCE = 0
+    TOPIC = 1
+    GROUP = 2
+
+
 # ---------------------------------------------------------------------------
 # QoS Policy dataclasses
 # ---------------------------------------------------------------------------
@@ -254,6 +260,17 @@ class Partition:
 
 
 @dataclass
+class Presentation:
+    access_scope: Literal["INSTANCE", "TOPIC", "GROUP"] = "INSTANCE"
+    coherent_access: bool = False
+    ordered_access: bool = False
+
+    @property
+    def _access_scope_int(self) -> int:
+        return PresentationAccessScope[self.access_scope]
+
+
+@dataclass
 class Property:
     """PropertyQosPolicy entries (DomainParticipant only).
 
@@ -340,11 +357,13 @@ class TopicQos:
 @dataclass
 class PublisherQos:
     partition: Partition | None = None
+    presentation: Presentation | None = None
 
 
 @dataclass
 class SubscriberQos:
     partition: Partition | None = None
+    presentation: Presentation | None = None
 
 
 @dataclass

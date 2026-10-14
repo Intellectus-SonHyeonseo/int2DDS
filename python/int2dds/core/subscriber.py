@@ -4,6 +4,7 @@ Subscriber and DataReader for receiving DDS data.
 
 from __future__ import annotations
 
+import weakref
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
@@ -32,7 +33,7 @@ from int2dds.exceptions import (
 
 if TYPE_CHECKING:
     from int2dds.core.participant import DomainParticipant
-    from int2dds.core.qos import DataReaderQos
+    from int2dds.core.qos import DataReaderQos, SubscriberQos
     from int2dds.core.topic import ContentFilteredTopic, Topic
     from int2dds.types.base import DdsType
 
@@ -123,6 +124,25 @@ def _apply_datareader_qos(handle: CData, qos: "DataReaderQos") -> None:
             handle, qos.liveliness._kind_int, qos.liveliness._lease_duration_ns))
 
 
+def _apply_subscriber_qos(handle: CData, qos: "SubscriberQos") -> None:
+    """Apply SubscriberQos policies onto a native subscriber QoS handle.
+
+    Shared by subscriber creation and set_qos. Only the policies explicitly set on
+    `qos` are applied; an empty partition name list is left unapplied.
+    """
+    if qos.partition is not None and qos.partition.names:
+        c_strings = [ffi.new("char[]", n.encode()) for n in qos.partition.names]
+        c_array = ffi.new("char*[]", c_strings)
+        check_ret(lib.int2dds_subscriber_qos_set_partition(
+            handle, c_array, len(qos.partition.names)))
+    if qos.presentation is not None:
+        check_ret(lib.int2dds_subscriber_qos_set_presentation(
+            handle,
+            qos.presentation._access_scope_int,
+            qos.presentation.coherent_access,
+            qos.presentation.ordered_access))
+
+
 class Subscriber:
     """
     Subscriber - groups DataReaders for coherent subscription.
@@ -130,28 +150,30 @@ class Subscriber:
     Subscribers are created through DomainParticipant.create_subscriber().
     """
 
-    __slots__ = ("_handle", "_participant", "_closed")
+    __slots__ = ("_handle", "_participant", "_closed", "_readers")
 
     def __init__(self, participant: DomainParticipant, qos: "SubscriberQos | None" = None,
                  profile: str | None = None) -> None:
         self._participant = participant
         self._closed = False
+        # Typed DataReaders created by this subscriber, keyed by their 16-byte GUID.
+        self._readers: weakref.WeakValueDictionary[bytes, DataReader] = (
+            weakref.WeakValueDictionary())
 
         subscriber_ptr = ffi.new("Int2DdsSubscriber **")
         if profile is not None:
             check_ret(lib.int2dds_create_subscriber_with_profile(
                 participant._handle, profile.encode(), subscriber_ptr))
-        elif qos is not None and qos.partition is not None and qos.partition.names:
+        elif qos is not None:
             qos_handle_ptr = ffi.new("Int2DdsSubscriberQos **")
             check_ret(lib.int2dds_subscriber_qos_create_default(qos_handle_ptr))
             qos_handle = qos_handle_ptr[0]
-            c_strings = [ffi.new("char[]", n.encode()) for n in qos.partition.names]
-            c_array = ffi.new("char*[]", c_strings)
-            check_ret(lib.int2dds_subscriber_qos_set_partition(
-                qos_handle, c_array, len(qos.partition.names)))
-            check_ret(lib.int2dds_create_subscriber(
-                participant._handle, qos_handle, subscriber_ptr))
-            lib.int2dds_subscriber_qos_destroy(qos_handle)
+            try:
+                _apply_subscriber_qos(qos_handle, qos)
+                check_ret(lib.int2dds_create_subscriber(
+                    participant._handle, qos_handle, subscriber_ptr))
+            finally:
+                lib.int2dds_subscriber_qos_destroy(qos_handle)
         else:
             check_ret(lib.int2dds_create_subscriber(
                 participant._handle, ffi.NULL, subscriber_ptr))
@@ -176,13 +198,17 @@ class Subscriber:
         Returns:
             A new DataReader instance
         """
-        return DataReader(self, topic, qos, listener, status_mask)
+        reader = DataReader(self, topic, qos, listener, status_mask)
+        self._readers[reader.get_guid()] = reader
+        return reader
 
     def create_datareader_with_profile(
         self, topic: Topic[T] | ContentFilteredTopic[T], profile: str
     ) -> DataReader[T]:
         """Create a DataReader whose QoS comes from the named XML profile."""
-        return DataReader(self, topic, profile=profile)
+        reader = DataReader(self, topic, profile=profile)
+        self._readers[reader.get_guid()] = reader
+        return reader
 
     def create_datareader_dynamic(self, topic, support):
         """Create a DataReader for a runtime XML/dynamic-typed topic."""
@@ -213,24 +239,107 @@ class Subscriber:
         check_ret(lib.int2dds_subscriber_get_status_changes(self._handle, mask_out))
         return mask_out[0]
 
+    def get_qos(self) -> "SubscriberQos":
+        """Return the effective QoS in force.
+
+        Reports the policies with a native getter (presentation). ``partition``
+        has no native getter and is left unset.
+        """
+        from int2dds.core.qos import Presentation, PresentationAccessScope, SubscriberQos
+
+        qos_ptr = ffi.new("Int2DdsSubscriberQos **")
+        check_ret(lib.int2dds_subscriber_get_qos(self._handle, qos_ptr))
+        handle = qos_ptr[0]
+        try:
+            access_scope = ffi.new("int32_t *")
+            coherent_access = ffi.new("bool *")
+            ordered_access = ffi.new("bool *")
+            check_ret(lib.int2dds_subscriber_qos_get_presentation(
+                handle, access_scope, coherent_access, ordered_access))
+        finally:
+            lib.int2dds_subscriber_qos_destroy(handle)
+
+        return SubscriberQos(
+            presentation=Presentation(
+                access_scope=PresentationAccessScope(access_scope[0]).name,
+                coherent_access=bool(coherent_access[0]),
+                ordered_access=bool(ordered_access[0]),
+            ),
+        )
+
     def set_qos(self, qos: "SubscriberQos") -> None:
         """Set this subscriber's QoS.
 
-        The current QoS is used as the merge base, then the ``partition`` policy
-        from ``qos`` (the only mutable SubscriberQos policy) is applied on top.
+        The given policies are merged onto the subscriber's current QoS (fetched as
+        the base), then applied. Changing an immutable policy (presentation) to a
+        different value is rejected by the core.
         """
         qos_ptr = ffi.new("Int2DdsSubscriberQos **")
         check_ret(lib.int2dds_subscriber_get_qos(self._handle, qos_ptr))
         handle = qos_ptr[0]
         try:
-            if qos is not None and qos.partition is not None and qos.partition.names:
-                c_strings = [ffi.new("char[]", n.encode()) for n in qos.partition.names]
-                c_array = ffi.new("char*[]", c_strings)
-                check_ret(lib.int2dds_subscriber_qos_set_partition(
-                    handle, c_array, len(qos.partition.names)))
+            _apply_subscriber_qos(handle, qos)
             check_ret(lib.int2dds_subscriber_set_qos(self._handle, handle))
         finally:
             lib.int2dds_subscriber_qos_destroy(handle)
+
+    def begin_access(self) -> None:
+        """Begin a sample access block.
+
+        Required before reading or calling get_datareaders() under GROUP access
+        scope. Has no effect under other access scopes. Calls may be nested.
+        """
+        check_ret(lib.int2dds_subscriber_begin_access(self._handle))
+
+    def end_access(self) -> None:
+        """End the sample access block started by begin_access().
+
+        Raises:
+            DdsPreconditionNotMet: Under GROUP access scope, if there is no matching
+                begin_access().
+        """
+        check_ret(lib.int2dds_subscriber_end_access(self._handle))
+
+    def get_datareaders(
+        self,
+        sample_states: int = ANY_SAMPLE_STATE,
+        view_states: int = ANY_VIEW_STATE,
+        instance_states: int = ANY_INSTANCE_STATE,
+    ) -> list[DataReader]:
+        """Return the DataReaders that hold samples matching the state masks.
+
+        The returned objects are the DataReader instances this subscriber created,
+        in the order the core reports them. Under GROUP access scope with ordered
+        access the list is in sample order and a reader may appear more than once.
+        Readers this binding cannot map back to an object are omitted: dynamic
+        readers (create_datareader_dynamic) and readers created outside this
+        Subscriber object (e.g. by an XML-configured participant).
+
+        Raises:
+            DdsPreconditionNotMet: Under GROUP access scope, if called outside a
+                begin_access()/end_access() block.
+        """
+        count_out = ffi.new("uintptr_t *")
+        check_ret(lib.int2dds_subscriber_get_datareaders(
+            self._handle, sample_states, view_states, instance_states,
+            ffi.NULL, 0, count_out))
+        while True:
+            capacity = count_out[0]
+            if capacity == 0:
+                return []
+            handles = ffi.new("uint8_t[][16]", capacity)
+            check_ret(lib.int2dds_subscriber_get_datareaders(
+                self._handle, sample_states, view_states, instance_states,
+                handles, capacity, count_out))
+            if count_out[0] <= capacity:
+                break
+
+        readers = (self._readers.get(bytes(handles[i])) for i in range(count_out[0]))
+        return [reader for reader in readers if reader is not None]
+
+    def notify_datareaders(self) -> None:
+        """Invoke the on_data_available listener of every DataReader of this subscriber."""
+        check_ret(lib.int2dds_subscriber_notify_datareaders(self._handle))
 
     def close(self) -> None:
         """Delete the subscriber."""
@@ -267,7 +376,7 @@ class DataReader(Generic[T]):
         ...         print(sample.data)
     """
 
-    __slots__ = ("_handle", "_subscriber", "_topic", "_qos_handle", "_buffer", "_buffer_size", "_closed","_listener_ctx_id")
+    __slots__ = ("_handle", "_subscriber", "_topic", "_qos_handle", "_buffer", "_buffer_size", "_closed","_listener_ctx_id", "__weakref__")
 
     # Default buffer size for reading samples
     DEFAULT_BUFFER_SIZE = 65536
