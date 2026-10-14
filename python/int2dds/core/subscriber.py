@@ -105,8 +105,8 @@ def _apply_datareader_qos(handle: CData, qos: "DataReaderQos") -> None:
     if qos.latency_budget is not None:
         check_ret(lib.int2dds_datareader_qos_set_latency_budget(
             handle, qos.latency_budget._duration_ns))
-    if qos.user_data is not None and qos.user_data.data:
-        data_ptr = ffi.from_buffer(qos.user_data.data)
+    if qos.user_data is not None:
+        data_ptr = ffi.from_buffer(qos.user_data.data) if qos.user_data.data else ffi.NULL
         check_ret(lib.int2dds_datareader_qos_set_user_data(
             handle, data_ptr, len(qos.user_data.data)))
     if qos.reader_data_lifecycle is not None:
@@ -845,9 +845,10 @@ class DataReader(Generic[T]):
 
     def get_qos(self) -> "DataReaderQos":
         """Return the effective QoS (reliability, durability, history) in force."""
+        from int2dds.core.discovery import _read_bytes
         from int2dds.core.qos import (
             DataReaderQos, Reliability, Durability, History, LifespanReference, ResourceLimits,
-            ReliabilityKind, DurabilityKind, HistoryKind, LifespanReferenceKind,
+            ReliabilityKind, DurabilityKind, HistoryKind, LifespanReferenceKind, UserData,
         )
 
         qos_ptr = ffi.new("Int2DdsDataReaderQos **")
@@ -869,6 +870,7 @@ class DataReader(Generic[T]):
             max_per_instance = ffi.new("int32_t *")
             check_ret(lib.int2dds_datareader_qos_get_resource_limits(
                 handle, max_samples, max_instances, max_per_instance))
+            user_data = _read_bytes(lib.int2dds_datareader_qos_get_user_data, handle)
         finally:
             lib.int2dds_datareader_qos_destroy(handle)
 
@@ -886,6 +888,7 @@ class DataReader(Generic[T]):
                 max_instances=max_instances[0],
                 max_samples_per_instance=max_per_instance[0],
             ),
+            user_data=UserData(data=user_data),
         )
 
     def set_qos(self, qos: "DataReaderQos") -> None:

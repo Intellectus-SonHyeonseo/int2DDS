@@ -62,8 +62,8 @@ def _apply_datawriter_qos(handle: CData, qos: "DataWriterQos") -> None:
     if qos.transport_priority is not None:
         check_ret(lib.int2dds_datawriter_qos_set_transport_priority(
             handle, qos.transport_priority.value))
-    if qos.user_data is not None and qos.user_data.data:
-        data_ptr = ffi.from_buffer(qos.user_data.data)
+    if qos.user_data is not None:
+        data_ptr = ffi.from_buffer(qos.user_data.data) if qos.user_data.data else ffi.NULL
         check_ret(lib.int2dds_datawriter_qos_set_user_data(
             handle, data_ptr, len(qos.user_data.data)))
     if qos.writer_data_lifecycle is not None:
@@ -351,9 +351,10 @@ class DataWriter(Generic[T]):
 
     def get_qos(self) -> "DataWriterQos":
         """Return the effective QoS (reliability, durability, history) in force."""
+        from int2dds.core.discovery import _read_bytes
         from int2dds.core.qos import (
             DataWriterQos, Reliability, Durability, History, Lifespan, ResourceLimits,
-            ReliabilityKind, DurabilityKind, HistoryKind,
+            ReliabilityKind, DurabilityKind, HistoryKind, UserData,
         )
 
         qos_ptr = ffi.new("Int2DdsDataWriterQos **")
@@ -377,6 +378,7 @@ class DataWriter(Generic[T]):
             max_per_instance = ffi.new("int32_t *")
             check_ret(lib.int2dds_datawriter_qos_get_resource_limits(
                 handle, max_samples, max_instances, max_per_instance))
+            user_data = _read_bytes(lib.int2dds_datawriter_qos_get_user_data, handle)
         finally:
             lib.int2dds_datawriter_qos_destroy(handle)
 
@@ -394,6 +396,7 @@ class DataWriter(Generic[T]):
             ),
             data_frag=frag[0],
             lifespan=Lifespan.from_ns(lifespan_ns[0]),
+            user_data=UserData(data=user_data),
         )
 
     def set_qos(self, qos: "DataWriterQos") -> None:

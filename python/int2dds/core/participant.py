@@ -55,8 +55,8 @@ def _apply_participant_qos(handle: CData, qos: ParticipantQos) -> None:
     Property entries are additive (merged onto whatever the handle already
     holds), preserving values the caller did not override.
     """
-    if qos.user_data is not None and qos.user_data.data:
-        data_ptr = ffi.from_buffer(qos.user_data.data)
+    if qos.user_data is not None:
+        data_ptr = ffi.from_buffer(qos.user_data.data) if qos.user_data.data else ffi.NULL
         check_ret(lib.int2dds_participant_qos_set_user_data(
             handle, data_ptr, len(qos.user_data.data)))
 
@@ -428,11 +428,11 @@ class DomainParticipant:
     def get_qos(self) -> ParticipantQos:
         """Get the current QoS of this participant.
 
-        Reports the PropertyQosPolicy entries currently in effect (including any
-        transport/discovery properties resolved at creation). user_data has no
-        native getter and is left unset.
+        Reports user_data and the PropertyQosPolicy entries currently in effect
+        (including any transport/discovery properties resolved at creation).
         """
-        from int2dds.core.qos import ParticipantQos, Property
+        from int2dds.core.discovery import _read_bytes
+        from int2dds.core.qos import ParticipantQos, Property, UserData
 
         qos_ptr = ffi.new("Int2DdsParticipantQos **")
         check_ret(lib.int2dds_participant_get_qos(self._handle, qos_ptr))
@@ -447,7 +447,9 @@ class DomainParticipant:
 
             check_ret(lib.int2dds_participant_qos_get_properties_with_prefix(
                 handle, b"", _collect, ffi.NULL))
-            return ParticipantQos(property=prop)
+            user_data = UserData(
+                data=_read_bytes(lib.int2dds_participant_qos_get_user_data, handle))
+            return ParticipantQos(user_data=user_data, property=prop)
         finally:
             lib.int2dds_participant_qos_destroy(handle)
 
@@ -455,8 +457,8 @@ class DomainParticipant:
         """Set the QoS of this participant.
 
         The given policies are merged onto the participant's current QoS, so
-        properties not present in ``qos`` are preserved. Setting a non-default
-        user_data raises, matching the core (UserDataQosPolicy is not mutable).
+        properties not present in ``qos`` are preserved. A given user_data
+        (including empty bytes) replaces the current one.
         """
         qos_ptr = ffi.new("Int2DdsParticipantQos **")
         check_ret(lib.int2dds_participant_get_qos(self._handle, qos_ptr))

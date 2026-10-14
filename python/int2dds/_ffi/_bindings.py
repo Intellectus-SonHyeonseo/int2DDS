@@ -686,6 +686,12 @@ ffi.cdef("""
         const uint8_t *data,
         size_t data_len
     );
+    Int2DdsRet int2dds_datawriter_qos_get_user_data(
+        const Int2DdsDataWriterQos *qos,
+        uint8_t *buf,
+        uintptr_t capacity,
+        uintptr_t *size_out
+    );
     Int2DdsRet int2dds_datawriter_qos_set_writer_data_lifecycle(
         Int2DdsDataWriterQos *qos,
         bool autodispose_unregistered_instances
@@ -754,6 +760,12 @@ ffi.cdef("""
         Int2DdsDataReaderQos *qos,
         const uint8_t *data,
         size_t data_len
+    );
+    Int2DdsRet int2dds_datareader_qos_get_user_data(
+        const Int2DdsDataReaderQos *qos,
+        uint8_t *buf,
+        uintptr_t capacity,
+        uintptr_t *size_out
     );
     Int2DdsRet int2dds_datareader_qos_set_reader_data_lifecycle(
         Int2DdsDataReaderQos *qos,
@@ -876,6 +888,12 @@ ffi.cdef("""
         Int2DdsParticipantQos *qos,
         const uint8_t *data,
         size_t data_len
+    );
+    Int2DdsRet int2dds_participant_qos_get_user_data(
+        const Int2DdsParticipantQos *qos,
+        uint8_t *buf,
+        uintptr_t capacity,
+        uintptr_t *size_out
     );
     Int2DdsRet int2dds_participant_qos_add_property(
         Int2DdsParticipantQos *qos,
