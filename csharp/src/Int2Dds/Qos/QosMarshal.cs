@@ -95,7 +95,7 @@ namespace Int2Dds.Qos
         }
 
         /// <summary>Read every policy off a native writer QoS handle.</summary>
-        internal static DataWriterQos ReadWriterQos(IntPtr h)
+        internal static unsafe DataWriterQos ReadWriterQos(IntPtr h)
         {
             NativeMethods.int2dds_datawriter_qos_get_reliability(h, out var relKind, out var relTime);
             NativeMethods.int2dds_datawriter_qos_get_durability(h, out var durKind);
@@ -130,6 +130,7 @@ namespace Int2Dds.Qos
                 LatencyBudget = new LatencyBudget(TimeSpan.FromTicks(latNs / 100)),
                 WriterDataLifecycle = new WriterDataLifecycle(autoDispose),
                 DataFrag = dataFrag,
+                UserData = new UserData(ReadBytes(h, NativeMethods.int2dds_datawriter_qos_get_user_data)),
             };
         }
 
@@ -204,7 +205,7 @@ namespace Int2Dds.Qos
         }
 
         /// <summary>Read every policy off a native reader QoS handle.</summary>
-        internal static DataReaderQos ReadReaderQos(IntPtr h)
+        internal static unsafe DataReaderQos ReadReaderQos(IntPtr h)
         {
             NativeMethods.int2dds_datareader_qos_get_reliability(h, out var relKind, out var relTime);
             NativeMethods.int2dds_datareader_qos_get_durability(h, out var durKind);
@@ -237,6 +238,7 @@ namespace Int2Dds.Qos
                 ReaderDataLifecycle = new ReaderDataLifecycle(
                     TimeSpan.FromTicks(purgeNowriterNs / 100),
                     TimeSpan.FromTicks(purgeDisposedNs / 100)),
+                UserData = new UserData(ReadBytes(h, NativeMethods.int2dds_datareader_qos_get_user_data)),
             };
         }
 
@@ -292,6 +294,23 @@ namespace Int2Dds.Qos
             {
                 Presentation = new Presentation((PresentationAccessScopeKind)scope, coherent, ordered),
             };
+        }
+
+        internal unsafe delegate int GetBytesFn(IntPtr qos, byte* buf, UIntPtr capacity, out UIntPtr sizeOut);
+
+        /// <summary>Read a byte sequence policy: query the size with a null buffer, then copy.</summary>
+        internal static unsafe byte[] ReadBytes(IntPtr qosHandle, GetBytesFn getBytes)
+        {
+            ReturnCodeHelper.CheckReturn(getBytes(qosHandle, null, UIntPtr.Zero, out var size));
+            int len = (int)(uint)size;
+            if (len == 0) return new byte[0];
+
+            var buf = new byte[len];
+            fixed (byte* p = buf)
+            {
+                ReturnCodeHelper.CheckReturn(getBytes(qosHandle, p, (UIntPtr)len, out size));
+            }
+            return buf;
         }
 
         private unsafe delegate int SetPartitionFn(IntPtr qos, byte** partitions, UIntPtr partitionCount);

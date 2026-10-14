@@ -85,6 +85,9 @@ namespace Int2Dds.Interop
         internal static extern int int2dds_datawriter_qos_get_data_frag(IntPtr qos, out int value);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static unsafe extern int int2dds_datawriter_qos_get_user_data(IntPtr qos, byte* buf, UIntPtr capacity, out UIntPtr size_out);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static extern int int2dds_datawriter_qos_get_resource_limits(IntPtr qos, out int max_samples, out int max_instances, out int max_per_instance);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
@@ -203,6 +206,9 @@ namespace Int2Dds.Interop
         internal static extern int int2dds_datareader_qos_get_reader_data_lifecycle(IntPtr qos, out long autopurge_nowriter_ns, out long autopurge_disposed_ns);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static unsafe extern int int2dds_datareader_qos_get_user_data(IntPtr qos, byte* buf, UIntPtr capacity, out UIntPtr size_out);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static extern int int2dds_datareader_qos_destroy(IntPtr qos);
 
         // ── Topic QoS ───────────────────────────────────────────────────────
@@ -253,6 +259,9 @@ namespace Int2Dds.Interop
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static unsafe extern int int2dds_participant_qos_set_user_data(IntPtr qos, byte* data, UIntPtr data_len);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static unsafe extern int int2dds_participant_qos_get_user_data(IntPtr qos, byte* buf, UIntPtr capacity, out UIntPtr size_out);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static unsafe extern int int2dds_participant_qos_add_property(IntPtr qos, byte* name, byte* value, [MarshalAs(UnmanagedType.I1)] bool propagate);
