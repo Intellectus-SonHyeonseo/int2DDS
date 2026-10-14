@@ -12,7 +12,7 @@ from int2dds.exceptions import DdsAlreadyDeleted, check_ret
 
 if TYPE_CHECKING:
     from int2dds.core.publisher import Publisher
-    from int2dds.core.qos import ParticipantQos
+    from int2dds.core.qos import ParticipantQos, TopicQos
     from int2dds.core.subscriber import Subscriber
     from int2dds.core.topic import ContentFilteredTopic, Topic
     from int2dds.types.base import DdsType
@@ -290,7 +290,7 @@ class DomainParticipant:
         self,
         topic_name: str,
         type_class: type[T],
-        qos: None = None,
+        qos: TopicQos | None = None,
     ) -> Topic[T]:
         """
         Create a Topic for this participant.
@@ -298,7 +298,7 @@ class DomainParticipant:
         Args:
             topic_name: The name of the topic
             type_class: The DDS type class (must have _dds_type_name and _extensibility)
-            qos: Optional TopicQos (not yet implemented)
+            qos: Optional TopicQos; None uses the default QoS
 
         Returns:
             A new Topic instance

@@ -4,9 +4,12 @@
 //!
 //! ## Supported Policies
 //!
-//! - **Reliability**: Best-effort or reliable delivery
-//! - **Durability**: Volatile, transient-local, transient, or persistent
-//! - **History**: Keep-last (with depth) or keep-all
+//! - **DataWriter / DataReader / Topic**: Reliability, Durability, History, Deadline,
+//!   Liveliness, Ownership, DestinationOrder, ResourceLimits, Lifespan, DataRepresentation and
+//!   the other entity-specific policies
+//! - **Publisher / Subscriber**: Partition, Presentation, GroupData
+//! - **Application data**: UserData (DomainParticipant, DataWriter, DataReader), TopicData
+//!   (Topic), GroupData (Publisher, Subscriber)
 //!
 //! ## Usage Pattern
 //!
