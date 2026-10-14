@@ -244,7 +244,8 @@ namespace Int2Dds.Qos
 
         /// <summary>True when <paramref name="qos"/> carries a policy that must reach a native publisher QoS handle.</summary>
         internal static bool HasPublisherPolicies(PublisherQos qos) =>
-            qos.Partition is { Names: { Length: var len } } && len > 0 || qos.Presentation != null;
+            qos.Partition is { Names: { Length: var len } } && len > 0 || qos.Presentation != null
+            || qos.GroupData is { Data: { Length: var dataLen } } && dataLen > 0;
 
         /// <summary>Write the non-null policies of <paramref name="qos"/> onto a native publisher QoS handle.</summary>
         internal static unsafe void ApplyPublisherQos(IntPtr qosHandle, PublisherQos qos)
@@ -256,22 +257,33 @@ namespace Int2Dds.Qos
                 ReturnCodeHelper.CheckReturn(NativeMethods.int2dds_publisher_qos_set_presentation(
                     qosHandle, (int)qos.Presentation.AccessScope, qos.Presentation.CoherentAccess,
                     qos.Presentation.OrderedAccess));
+
+            if (qos.GroupData != null && qos.GroupData.Data != null && qos.GroupData.Data.Length > 0)
+            {
+                fixed (byte* pData = qos.GroupData.Data)
+                {
+                    ReturnCodeHelper.CheckReturn(NativeMethods.int2dds_publisher_qos_set_group_data(
+                        qosHandle, pData, (UIntPtr)qos.GroupData.Data.Length));
+                }
+            }
         }
 
         /// <summary>Read the policies that have a native getter off a publisher QoS handle. Partition is left null.</summary>
-        internal static PublisherQos ReadPublisherQos(IntPtr h)
+        internal static unsafe PublisherQos ReadPublisherQos(IntPtr h)
         {
             NativeMethods.int2dds_publisher_qos_get_presentation(h, out var scope, out var coherent, out var ordered);
 
             return new PublisherQos
             {
                 Presentation = new Presentation((PresentationAccessScopeKind)scope, coherent, ordered),
+                GroupData = new GroupData(ReadBytes(h, NativeMethods.int2dds_publisher_qos_get_group_data)),
             };
         }
 
         /// <summary>True when <paramref name="qos"/> carries a policy that must reach a native subscriber QoS handle.</summary>
         internal static bool HasSubscriberPolicies(SubscriberQos qos) =>
-            qos.Partition is { Names: { Length: var len } } && len > 0 || qos.Presentation != null;
+            qos.Partition is { Names: { Length: var len } } && len > 0 || qos.Presentation != null
+            || qos.GroupData is { Data: { Length: var dataLen } } && dataLen > 0;
 
         /// <summary>Write the non-null policies of <paramref name="qos"/> onto a native subscriber QoS handle.</summary>
         internal static unsafe void ApplySubscriberQos(IntPtr qosHandle, SubscriberQos qos)
@@ -283,16 +295,26 @@ namespace Int2Dds.Qos
                 ReturnCodeHelper.CheckReturn(NativeMethods.int2dds_subscriber_qos_set_presentation(
                     qosHandle, (int)qos.Presentation.AccessScope, qos.Presentation.CoherentAccess,
                     qos.Presentation.OrderedAccess));
+
+            if (qos.GroupData != null && qos.GroupData.Data != null && qos.GroupData.Data.Length > 0)
+            {
+                fixed (byte* pData = qos.GroupData.Data)
+                {
+                    ReturnCodeHelper.CheckReturn(NativeMethods.int2dds_subscriber_qos_set_group_data(
+                        qosHandle, pData, (UIntPtr)qos.GroupData.Data.Length));
+                }
+            }
         }
 
         /// <summary>Read the policies that have a native getter off a subscriber QoS handle. Partition is left null.</summary>
-        internal static SubscriberQos ReadSubscriberQos(IntPtr h)
+        internal static unsafe SubscriberQos ReadSubscriberQos(IntPtr h)
         {
             NativeMethods.int2dds_subscriber_qos_get_presentation(h, out var scope, out var coherent, out var ordered);
 
             return new SubscriberQos
             {
                 Presentation = new Presentation((PresentationAccessScopeKind)scope, coherent, ordered),
+                GroupData = new GroupData(ReadBytes(h, NativeMethods.int2dds_subscriber_qos_get_group_data)),
             };
         }
 

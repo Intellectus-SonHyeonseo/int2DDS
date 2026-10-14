@@ -89,6 +89,9 @@ namespace Int2Dds.Interop
         internal static unsafe extern int int2dds_publication_builtin_topic_data_get_topic_data(IntPtr data, byte* buf, UIntPtr capacity, out UIntPtr size_out);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static unsafe extern int int2dds_publication_builtin_topic_data_get_group_data(IntPtr data, byte* buf, UIntPtr capacity, out UIntPtr size_out);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static unsafe extern int int2dds_subscription_builtin_topic_data_get_endpoint_guid(IntPtr data, byte* guid_out);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
@@ -115,6 +118,9 @@ namespace Int2Dds.Interop
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static unsafe extern int int2dds_subscription_builtin_topic_data_get_topic_data(IntPtr data, byte* buf, UIntPtr capacity, out UIntPtr size_out);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static unsafe extern int int2dds_subscription_builtin_topic_data_get_group_data(IntPtr data, byte* buf, UIntPtr capacity, out UIntPtr size_out);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static unsafe extern int int2dds_publication_builtin_topic_data_get_key(IntPtr data, byte* key_out);

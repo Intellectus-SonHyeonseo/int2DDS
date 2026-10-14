@@ -165,6 +165,17 @@ namespace Int2Dds.Qos
         }
     }
 
+    public class GroupData
+    {
+        public byte[] Data { get; set; } = Int2Dds.Internal.EmptyArrayHolder<byte>.Value;
+
+        public GroupData() { }
+        public GroupData(byte[] data)
+        {
+            Data = data;
+        }
+    }
+
     public class WriterDataLifecycle
     {
         public bool AutodisposeUnregisteredInstances { get; set; } = true;

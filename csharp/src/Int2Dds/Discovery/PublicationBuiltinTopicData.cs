@@ -251,6 +251,17 @@ namespace Int2Dds.Discovery
             }
         }
 
+        /// <summary>The group_data bytes of the writer's publisher (possibly empty).</summary>
+        public unsafe byte[] GroupData
+        {
+            get
+            {
+                if (_disposed) throw new ObjectDisposedException(GetType().Name);
+                return Int2Dds.Qos.QosMarshal.ReadBytes(
+                    _handle, NativeMethods.int2dds_publication_builtin_topic_data_get_group_data);
+            }
+        }
+
         internal static TimeSpan? DurationToTimeSpan(int sec, uint nanosec)
         {
             if (sec == int.MaxValue && nanosec == 0x7fffffff) return null; // infinite
