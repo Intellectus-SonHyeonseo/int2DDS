@@ -38,6 +38,7 @@ import kr.co.intellectus.int2dds.qos.ReliabilityKind;
 import kr.co.intellectus.int2dds.qos.ResourceLimits;
 import kr.co.intellectus.int2dds.qos.SubscriberQos;
 import kr.co.intellectus.int2dds.qos.TimeBasedFilter;
+import kr.co.intellectus.int2dds.qos.TopicData;
 import kr.co.intellectus.int2dds.qos.TopicQos;
 import kr.co.intellectus.int2dds.qos.TransportPriority;
 import kr.co.intellectus.int2dds.qos.UserData;
@@ -109,8 +110,8 @@ public final class QosMarshal {
 
     public static void applyParticipantQos(long h, ParticipantQos q) {
         if (q.getUserData() != null) {
-            applyUserData(
-                    q.getUserData(),
+            applyOctets(
+                    q.getUserData().getData(),
                     (addr, len) -> FfiAccess.participantQosSetUserData(h, addr, len));
         }
         if (q.getProperty() != null) {
@@ -139,9 +140,11 @@ public final class QosMarshal {
         }
         ParticipantQos q = new ParticipantQos();
         q.setUserData(
-                readUserData(
-                        (buf, capacity, sizeOut) ->
-                                FfiAccess.participantQosGetUserData(h, buf, capacity, sizeOut)));
+                new UserData(
+                        readOctets(
+                                (buf, capacity, sizeOut) ->
+                                        FfiAccess.participantQosGetUserData(
+                                                h, buf, capacity, sizeOut))));
         q.setProperty(property);
         return q;
     }
@@ -223,6 +226,11 @@ public final class QosMarshal {
     }
 
     public static void applyTopicQos(long h, TopicQos q) {
+        if (q.getTopicData() != null) {
+            applyOctets(
+                    q.getTopicData().getData(),
+                    (addr, len) -> FfiAccess.topicQosSetTopicData(h, addr, len));
+        }
         if (q.getReliability() != null) {
             ReturnCodes.check(
                     FfiAccess.topicQosSetReliability(
@@ -281,6 +289,21 @@ public final class QosMarshal {
         }
     }
 
+    /**
+     * Reads back a topic QoS handle's {@code TopicData}. Every other topic policy has no getter and
+     * stays null; see the set-only list in this class's javadoc.
+     */
+    public static TopicQos readTopicQos(long h) {
+        TopicQos q = new TopicQos();
+        q.setTopicData(
+                new TopicData(
+                        readOctets(
+                                (buf, capacity, sizeOut) ->
+                                        FfiAccess.topicQosGetTopicData(
+                                                h, buf, capacity, sizeOut))));
+        return q;
+    }
+
     public static void applyWriterQos(long h, DataWriterQos q) {
         if (q.getReliability() != null) {
             ReturnCodes.check(
@@ -334,8 +357,9 @@ public final class QosMarshal {
                             h, q.getTransportPriority().getValue()));
         }
         if (q.getUserData() != null) {
-            applyUserData(
-                    q.getUserData(), (addr, len) -> FfiAccess.writerQosSetUserData(h, addr, len));
+            applyOctets(
+                    q.getUserData().getData(),
+                    (addr, len) -> FfiAccess.writerQosSetUserData(h, addr, len));
         }
         if (q.getWriterDataLifecycle() != null) {
             ReturnCodes.check(
@@ -407,8 +431,9 @@ public final class QosMarshal {
                     FfiAccess.readerQosSetLatencyBudget(h, q.getLatencyBudget().durationNs()));
         }
         if (q.getUserData() != null) {
-            applyUserData(
-                    q.getUserData(), (addr, len) -> FfiAccess.readerQosSetUserData(h, addr, len));
+            applyOctets(
+                    q.getUserData().getData(),
+                    (addr, len) -> FfiAccess.readerQosSetUserData(h, addr, len));
         }
         if (q.getReaderDataLifecycle() != null) {
             ReturnCodes.check(
@@ -506,9 +531,11 @@ public final class QosMarshal {
         q.setDataFrag(slot.getInt(0));
 
         q.setUserData(
-                readUserData(
-                        (buf, capacity, sizeOut) ->
-                                FfiAccess.writerQosGetUserData(h, buf, capacity, sizeOut)));
+                new UserData(
+                        readOctets(
+                                (buf, capacity, sizeOut) ->
+                                        FfiAccess.writerQosGetUserData(
+                                                h, buf, capacity, sizeOut))));
 
         // One slot address feeds every getter above. The ordinary later
         // slot.getInt/getLong reads are what keep it reachable in practice,
@@ -583,9 +610,11 @@ public final class QosMarshal {
                 new LifespanReference(LifespanReferenceKind.fromValue(slot.getInt(0))));
 
         q.setUserData(
-                readUserData(
-                        (buf, capacity, sizeOut) ->
-                                FfiAccess.readerQosGetUserData(h, buf, capacity, sizeOut)));
+                new UserData(
+                        readOctets(
+                                (buf, capacity, sizeOut) ->
+                                        FfiAccess.readerQosGetUserData(
+                                                h, buf, capacity, sizeOut))));
 
         // One slot address feeds every getter above. The ordinary later
         // slot.getInt/getLong reads are what keep it reachable in practice,
@@ -607,18 +636,17 @@ public final class QosMarshal {
     }
 
     /**
-     * Copies {@code ud}'s bytes into a direct buffer and hands its address to {@code setter}.
-     * Nothing about the raw address itself keeps the buffer reachable for the setter call's
-     * duration -- see {@link NativeKeepAlive}'s own doc -- so this fences {@code buf} explicitly
-     * immediately afterward, the same fence every {@code FfiAccess} bridge that hands a direct
-     * buffer's address to native code uses.
+     * Copies {@code data} into a direct buffer and hands its address to {@code setter}. Nothing
+     * about the raw address itself keeps the buffer reachable for the setter call's duration -- see
+     * {@link NativeKeepAlive}'s own doc -- so this fences {@code buf} explicitly immediately
+     * afterward, the same fence every {@code FfiAccess} bridge that hands a direct buffer's address
+     * to native code uses.
      *
      * <p>The status code is held in a local and checked <em>after</em> the fence, not folded into
      * the call. Checking first would throw past the fence on failure, leaving the one path with no
      * later use of {@code buf} unfenced -- which is the path the fence exists for.
      */
-    private static void applyUserData(UserData ud, ByteBufferSetter setter) {
-        byte[] data = ud.getData();
+    private static void applyOctets(byte[] data, ByteBufferSetter setter) {
         ByteBuffer buf = ByteBuffer.allocateDirect(data.length).order(ByteOrder.nativeOrder());
         buf.put(data);
         long addr = FfiAccess.directBufferAddress(buf);
@@ -627,14 +655,14 @@ public final class QosMarshal {
         ReturnCodes.check(rc);
     }
 
-    /** Reads an octet-sequence policy through {@code getter} into a {@link UserData}. */
-    private static UserData readUserData(FfiAccess.GrowableBytesGetter getter) {
+    /** Reads an octet-sequence policy through {@code getter}. */
+    private static byte[] readOctets(FfiAccess.GrowableBytesGetter getter) {
         byte[][] bytesOut = new byte[1][];
         ReturnCodes.check(FfiAccess.readGrowableBytes(getter, bytesOut));
-        return new UserData(bytesOut[0]);
+        return bytesOut[0];
     }
 
-    /** Same direct-buffer hand-off as {@link #applyUserData}, for one binary property entry. */
+    /** Same direct-buffer hand-off as {@link #applyOctets}, for one binary property entry. */
     private static void applyBinaryProperty(long h, PropertyEntry e) {
         byte[] data = e.getBinaryValue();
         ByteBuffer buf =

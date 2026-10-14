@@ -41,6 +41,7 @@ public final class SubscriptionBuiltinTopicData {
     private final int presentationAccessScope;
     private final boolean presentationCoherentAccess;
     private final boolean presentationOrderedAccess;
+    private final byte[] topicData;
     private final int instanceState;
     private final boolean hasData;
 
@@ -61,6 +62,7 @@ public final class SubscriptionBuiltinTopicData {
             int presentationAccessScope,
             boolean presentationCoherentAccess,
             boolean presentationOrderedAccess,
+            byte[] topicData,
             int instanceState,
             boolean hasData) {
         this.key = key;
@@ -79,6 +81,7 @@ public final class SubscriptionBuiltinTopicData {
         this.presentationAccessScope = presentationAccessScope;
         this.presentationCoherentAccess = presentationCoherentAccess;
         this.presentationOrderedAccess = presentationOrderedAccess;
+        this.topicData = topicData;
         this.instanceState = instanceState;
         this.hasData = hasData;
     }
@@ -166,6 +169,11 @@ public final class SubscriptionBuiltinTopicData {
         return presentationOrderedAccess;
     }
 
+    /** The raw {@code topic_data} bytes (defensively copied), possibly empty. */
+    public byte[] topicData() {
+        return topicData.clone();
+    }
+
     /**
      * Reads every field off a live native {@code SubscriptionBuiltinTopicData} box into an
      * immutable snapshot. {@code data} must still be valid when this is called; the caller retains
@@ -194,6 +202,7 @@ public final class SubscriptionBuiltinTopicData {
                 0,
                 false,
                 false,
+                new byte[0],
                 instanceState,
                 false);
     }
@@ -276,6 +285,18 @@ public final class SubscriptionBuiltinTopicData {
                         presentationCoherentAccess,
                         presentationOrderedAccess));
 
+        byte[][] topicDataBytes = new byte[1][];
+        ReturnCodes.check(
+                FfiAccess.readGrowableBytes(
+                        new FfiAccess.GrowableBytesGetter() {
+                            @Override
+                            public int get(long buf, long capacity, long sizeOut) {
+                                return FfiAccess.subDataGetTopicData(
+                                        dataHandle, buf, capacity, sizeOut);
+                            }
+                        },
+                        topicDataBytes));
+
         return new SubscriptionBuiltinTopicData(
                 key,
                 endpointGuid,
@@ -293,6 +314,7 @@ public final class SubscriptionBuiltinTopicData {
                 presentationAccessScope[0],
                 presentationCoherentAccess[0],
                 presentationOrderedAccess[0],
+                topicDataBytes[0],
                 instanceState,
                 true);
     }

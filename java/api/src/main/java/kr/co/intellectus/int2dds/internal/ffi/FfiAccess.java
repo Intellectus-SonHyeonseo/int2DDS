@@ -1427,6 +1427,15 @@ public final class FfiAccess {
         return Ffi.int2dds_topic_qos_set_data_representation(qos, kind);
     }
 
+    public static int topicQosSetTopicData(long qos, long dataAddr, long dataLen) {
+        return Ffi.int2dds_topic_qos_set_topic_data(qos, dataAddr, dataLen);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the topic_data getter. */
+    public static int topicQosGetTopicData(long qos, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_topic_qos_get_topic_data(qos, buf, capacity, sizeOut);
+    }
+
     // --- DataWriter QoS setters ---
 
     public static int writerQosSetReliability(long qos, int kind, long maxBlockingTimeNs) {
@@ -4226,6 +4235,12 @@ public final class FfiAccess {
                 data, buf, capacity, sizeOut);
     }
 
+    /** Direct passthrough for {@link #readGrowableBytes}: the topic_data getter. */
+    public static int pubDataGetTopicData(long data, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_publication_builtin_topic_data_get_topic_data(
+                data, buf, capacity, sizeOut);
+    }
+
     /** Same contract as {@link #publisherQosGetPresentation}, for a publication box. */
     public static int pubDataGetPresentation(
             long data,
@@ -4486,6 +4501,12 @@ public final class FfiAccess {
     /** Direct passthrough for {@link #readGrowableBytes}: the user_data getter. */
     public static int subDataGetUserData(long data, long buf, long capacity, long sizeOut) {
         return Ffi.int2dds_subscription_builtin_topic_data_get_user_data(
+                data, buf, capacity, sizeOut);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the topic_data getter. */
+    public static int subDataGetTopicData(long data, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_subscription_builtin_topic_data_get_topic_data(
                 data, buf, capacity, sizeOut);
     }
 
