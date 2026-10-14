@@ -70,9 +70,9 @@ import kr.co.intellectus.int2dds.qos.WriterDataLifecycle;
  *
  * <h2>Set-only, no getter — not round-trip verifiable</h2>
  *
- * <p>The FFI has 44 QoS setters and 28 getters (not the same shape: one getter, {@code
+ * <p>The FFI has 50 QoS setters and 37 getters (not the same shape: one getter, {@code
  * int2dds_participant_qos_get_properties_with_prefix}, has no corresponding setter, so the gap
- * below is 17 entries rather than the 44-28 arithmetic difference of 16). Output of:
+ * below is 14 entries rather than the 50-37 arithmetic difference of 13). Output of:
  *
  * <pre>{@code
  * comm -23 \
@@ -81,10 +81,7 @@ import kr.co.intellectus.int2dds.qos.WriterDataLifecycle;
  * }</pre>
  *
  * <pre>
- * int2dds_datareader_qos_user_data
- * int2dds_datawriter_qos_user_data
  * int2dds_participant_qos_multicast_ttl
- * int2dds_participant_qos_user_data
  * int2dds_publisher_qos_partition
  * int2dds_subscriber_qos_partition
  * int2dds_topic_qos_data_representation
@@ -100,7 +97,7 @@ import kr.co.intellectus.int2dds.qos.WriterDataLifecycle;
  * int2dds_topic_qos_transport_priority
  * </pre>
  *
- * <p>None of these seventeen policies can be round-trip verified; a test can only assert the setter
+ * <p>None of these fourteen policies can be round-trip verified; a test can only assert the setter
  * call returned OK. If the FFI ever grows a getter for one of them, this list — and {@link
  * #readWriterQos} / {@link #readReaderQos} — should be updated to match.
  */
@@ -130,9 +127,9 @@ public final class QosMarshal {
     }
 
     /**
-     * Reads back a participant QoS handle's text properties. {@code UserData} has no getter and
-     * stays null; binary entries and {@code propagate} flags are not reported, so every entry reads
-     * back as text with {@code propagate == false}.
+     * Reads back a participant QoS handle's {@code UserData} and text properties. Binary entries
+     * and {@code propagate} flags are not reported, so every entry reads back as text with {@code
+     * propagate == false}.
      */
     public static ParticipantQos readParticipantQos(long h) {
         byte[][] flat = FfiAccess.participantQosPropertiesWithPrefix(h, new byte[0]);
@@ -141,6 +138,10 @@ public final class QosMarshal {
             property.add(new String(flat[i], UTF8), new String(flat[i + 1], UTF8), false);
         }
         ParticipantQos q = new ParticipantQos();
+        q.setUserData(
+                readUserData(
+                        (buf, capacity, sizeOut) ->
+                                FfiAccess.participantQosGetUserData(h, buf, capacity, sizeOut)));
         q.setProperty(property);
         return q;
     }
@@ -504,6 +505,11 @@ public final class QosMarshal {
         ReturnCodes.check(FfiAccess.writerQosGetDataFrag(h, addr));
         q.setDataFrag(slot.getInt(0));
 
+        q.setUserData(
+                readUserData(
+                        (buf, capacity, sizeOut) ->
+                                FfiAccess.writerQosGetUserData(h, buf, capacity, sizeOut)));
+
         // One slot address feeds every getter above. The ordinary later
         // slot.getInt/getLong reads are what keep it reachable in practice,
         // but that is the same reasoning this class rejected as insufficient
@@ -576,6 +582,11 @@ public final class QosMarshal {
         q.setLifespanReference(
                 new LifespanReference(LifespanReferenceKind.fromValue(slot.getInt(0))));
 
+        q.setUserData(
+                readUserData(
+                        (buf, capacity, sizeOut) ->
+                                FfiAccess.readerQosGetUserData(h, buf, capacity, sizeOut)));
+
         // One slot address feeds every getter above. The ordinary later
         // slot.getInt/getLong reads are what keep it reachable in practice,
         // but that is the same reasoning this class rejected as insufficient
@@ -614,6 +625,13 @@ public final class QosMarshal {
         int rc = setter.set(addr, data.length);
         NativeKeepAlive.keepAlive(buf);
         ReturnCodes.check(rc);
+    }
+
+    /** Reads an octet-sequence policy through {@code getter} into a {@link UserData}. */
+    private static UserData readUserData(FfiAccess.GrowableBytesGetter getter) {
+        byte[][] bytesOut = new byte[1][];
+        ReturnCodes.check(FfiAccess.readGrowableBytes(getter, bytesOut));
+        return new UserData(bytesOut[0]);
     }
 
     /** Same direct-buffer hand-off as {@link #applyUserData}, for one binary property entry. */

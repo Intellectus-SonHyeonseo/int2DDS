@@ -1561,6 +1561,11 @@ public final class FfiAccess {
         return Ffi.int2dds_datawriter_qos_get_data_frag(qos, valueOut);
     }
 
+    /** Direct passthrough for {@link #readGrowableBytes}: the user_data getter. */
+    public static int writerQosGetUserData(long qos, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_datawriter_qos_get_user_data(qos, buf, capacity, sizeOut);
+    }
+
     // --- DataReader QoS setters ---
 
     public static int readerQosSetReliability(long qos, int kind, long maxBlockingTimeNs) {
@@ -1677,6 +1682,11 @@ public final class FfiAccess {
 
     public static int participantQosSetUserData(long qos, long dataAddr, long dataLen) {
         return Ffi.int2dds_participant_qos_set_user_data(qos, dataAddr, dataLen);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the user_data getter. */
+    public static int participantQosGetUserData(long qos, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_participant_qos_get_user_data(qos, buf, capacity, sizeOut);
     }
 
     /** Adds or overwrites one text property entry (PropertyQosPolicy). */
@@ -5212,6 +5222,11 @@ public final class FfiAccess {
 
     public static int readerQosGetLifespanReference(long qos, long kindOut) {
         return Ffi.int2dds_datareader_qos_get_lifespan_reference(qos, kindOut);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the user_data getter. */
+    public static int readerQosGetUserData(long qos, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_datareader_qos_get_user_data(qos, buf, capacity, sizeOut);
     }
 
     // --- DataReader: loaned serialized take ---
