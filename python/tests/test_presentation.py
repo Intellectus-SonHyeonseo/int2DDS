@@ -129,6 +129,23 @@ def test_group_coherent_ordered_get_datareaders():
         assert readers[1] is reader_b
         assert readers[2] is reader_a
 
+        # GROUP access scope rejects a take outside an access block.
+        with pytest.raises(DdsPreconditionNotMet):
+            reader_a.take_one()
+
+        # Taking one sample per listed reader, in list order, yields the write order.
+        values = []
+        sub.begin_access()
+        try:
+            for reader in sub.get_datareaders():
+                sample = reader.take_one()
+                assert sample is not None
+                values.append(sample.data.value)
+        finally:
+            sub.end_access()
+
+        assert values == [1, 2, 3]
+
         publications = []
 
         def _publication_a_discovered() -> bool:

@@ -81,9 +81,7 @@ unsafe fn wait_for_writer_match(writer: *const Int2DdsDataWriter) {
     }
 }
 
-unsafe fn get_datareaders_in_access_block(subscriber: *const Int2DdsSubscriber) -> Vec<[u8; 16]> {
-    assert_eq!(int2dds_subscriber_begin_access(subscriber), INT2DDS_RET_OK);
-
+unsafe fn get_datareaders(subscriber: *const Int2DdsSubscriber) -> Vec<[u8; 16]> {
     let mut count = 0usize;
     assert_eq!(
         int2dds_subscriber_get_datareaders(
@@ -113,10 +111,40 @@ unsafe fn get_datareaders_in_access_block(subscriber: *const Int2DdsSubscriber) 
         INT2DDS_RET_OK
     );
 
-    assert_eq!(int2dds_subscriber_end_access(subscriber), INT2DDS_RET_OK);
-
     handles.truncate(written_count);
     handles
+}
+
+unsafe fn get_datareaders_in_access_block(subscriber: *const Int2DdsSubscriber) -> Vec<[u8; 16]> {
+    assert_eq!(int2dds_subscriber_begin_access(subscriber), INT2DDS_RET_OK);
+
+    let handles = get_datareaders(subscriber);
+
+    assert_eq!(int2dds_subscriber_end_access(subscriber), INT2DDS_RET_OK);
+
+    handles
+}
+
+// Takes one sample and returns its `value` field, or the return code on failure.
+unsafe fn take_value(reader: *const Int2DdsDataReader) -> Result<u8, Int2DdsRet> {
+    let mut buffer = [0u8; 64];
+    let mut size = 0usize;
+    let mut is_valid_data = false;
+
+    let ret = int2dds_datareader_take_serialized(
+        reader,
+        buffer.as_mut_ptr(),
+        buffer.len(),
+        &mut size,
+        &mut is_valid_data,
+    );
+
+    if ret != INT2DDS_RET_OK {
+        return Err(ret);
+    }
+
+    assert!(is_valid_data);
+    Ok(buffer[8])
 }
 
 #[test]
@@ -295,6 +323,24 @@ fn group_coherent_set_is_listed_in_write_order() {
         };
 
         assert_eq!(handles, vec![guid_a, guid_b, guid_a]);
+
+        // GROUP access scope rejects a take outside an access block.
+        assert_eq!(take_value(reader_a), Err(INT2DDS_RET_PRECONDITION_NOT_MET));
+
+        // Taking one sample per listed reader, in list order, yields the write order.
+        assert_eq!(int2dds_subscriber_begin_access(subscriber), INT2DDS_RET_OK);
+
+        let values: Vec<u8> = get_datareaders(subscriber)
+            .iter()
+            .map(|handle| {
+                let reader = if *handle == guid_a { reader_a } else { reader_b };
+                take_value(reader).unwrap()
+            })
+            .collect();
+
+        assert_eq!(int2dds_subscriber_end_access(subscriber), INT2DDS_RET_OK);
+
+        assert_eq!(values, vec![10, 20, 30]);
 
         // The matched publication carries the publisher's presentation QoS.
         let mut publication_handle = [0u8; 16];

@@ -111,6 +111,28 @@ namespace Int2Dds.Tests
                 Assert.Same(readerB, readers[1]);
                 Assert.Same(readerA, readers[2]);
 
+                // GROUP access scope rejects a take outside an access block.
+                Assert.Throws<DdsPreconditionNotMetException>(() => readerA.TakeOne());
+
+                // Taking one sample per listed reader, in list order, yields the write order.
+                var messages = new List<string>();
+                subscriber.BeginAccess();
+                try
+                {
+                    foreach (var reader in subscriber.GetDataReaders())
+                    {
+                        var sample = ((DataReader<HelloWorld>)reader).TakeOne();
+                        Assert.NotNull(sample);
+                        messages.Add(sample!.Value.Data!.Message);
+                    }
+                }
+                finally
+                {
+                    subscriber.EndAccess();
+                }
+
+                Assert.Equal(new[] { "a1", "b1", "a2" }, messages);
+
                 var publication = subDp.TakeDiscoveredPublications()
                     .Single(p => p.TopicName == "PresentationGroupA_Cs");
                 using (publication)

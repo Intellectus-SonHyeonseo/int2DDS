@@ -2,11 +2,14 @@ package kr.co.intellectus.int2dds.core;
 
 import static kr.co.intellectus.int2dds.core.DomainParticipantTest.testDomain;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import kr.co.intellectus.int2dds.discovery.PublicationBuiltinTopicData;
@@ -121,6 +124,24 @@ class PresentationTest {
             assertSame(readerA, readers.get(0));
             assertSame(readerB, readers.get(1));
             assertSame(readerA, readers.get(2));
+
+            // GROUP access scope rejects a take outside an access block.
+            assertThrows(DdsPreconditionNotMetException.class, readerA::take);
+
+            // Taking one sample per listed reader, in list order, yields the write order.
+            List<Integer> ids = new ArrayList<Integer>();
+            sub.beginAccess();
+            try {
+                for (DataReader<?> reader : sub.getDataReaders()) {
+                    Sample<?> sample = reader.take();
+                    assertNotNull(sample);
+                    ids.add(((ConformanceRecord) sample.data()).id);
+                }
+            } finally {
+                sub.endAccess();
+            }
+
+            assertEquals(Arrays.asList(1, 2, 3), ids);
 
             // The matched publication carries the publisher's presentation QoS.
             List<PublicationBuiltinTopicData> publications = readerA.getMatchedPublications();
