@@ -288,6 +288,14 @@ namespace Int2Dds.Interop
         internal static unsafe extern int int2dds_publisher_qos_set_partition(IntPtr qos, byte** partitions, UIntPtr partition_count);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int int2dds_publisher_qos_set_presentation(IntPtr qos, int access_scope,
+            [MarshalAs(UnmanagedType.U1)] bool coherent_access, [MarshalAs(UnmanagedType.U1)] bool ordered_access);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int int2dds_publisher_qos_get_presentation(IntPtr qos, out int access_scope,
+            [MarshalAs(UnmanagedType.U1)] out bool coherent_access, [MarshalAs(UnmanagedType.U1)] out bool ordered_access);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static extern int int2dds_publisher_qos_destroy(IntPtr qos);
 
         // ── Subscriber QoS ──────────────────────────────────────────────────
@@ -297,6 +305,14 @@ namespace Int2Dds.Interop
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static unsafe extern int int2dds_subscriber_qos_set_partition(IntPtr qos, byte** partitions, UIntPtr partition_count);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int int2dds_subscriber_qos_set_presentation(IntPtr qos, int access_scope,
+            [MarshalAs(UnmanagedType.U1)] bool coherent_access, [MarshalAs(UnmanagedType.U1)] bool ordered_access);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int int2dds_subscriber_qos_get_presentation(IntPtr qos, out int access_scope,
+            [MarshalAs(UnmanagedType.U1)] out bool coherent_access, [MarshalAs(UnmanagedType.U1)] out bool ordered_access);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static extern int int2dds_subscriber_qos_destroy(IntPtr qos);

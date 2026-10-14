@@ -1,4 +1,7 @@
 using System;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using Int2Dds.Exceptions;
 using Int2Dds.Interop;
 
@@ -235,6 +238,88 @@ namespace Int2Dds.Qos
                     TimeSpan.FromTicks(purgeNowriterNs / 100),
                     TimeSpan.FromTicks(purgeDisposedNs / 100)),
             };
+        }
+
+        /// <summary>True when <paramref name="qos"/> carries a policy that must reach a native publisher QoS handle.</summary>
+        internal static bool HasPublisherPolicies(PublisherQos qos) =>
+            qos.Partition is { Names: { Length: var len } } && len > 0 || qos.Presentation != null;
+
+        /// <summary>Write the non-null policies of <paramref name="qos"/> onto a native publisher QoS handle.</summary>
+        internal static unsafe void ApplyPublisherQos(IntPtr qosHandle, PublisherQos qos)
+        {
+            if (qos.Partition is { Names: { Length: var len } } partition && len > 0)
+                ApplyPartition(qosHandle, partition, NativeMethods.int2dds_publisher_qos_set_partition);
+
+            if (qos.Presentation != null)
+                ReturnCodeHelper.CheckReturn(NativeMethods.int2dds_publisher_qos_set_presentation(
+                    qosHandle, (int)qos.Presentation.AccessScope, qos.Presentation.CoherentAccess,
+                    qos.Presentation.OrderedAccess));
+        }
+
+        /// <summary>Read the policies that have a native getter off a publisher QoS handle. Partition is left null.</summary>
+        internal static PublisherQos ReadPublisherQos(IntPtr h)
+        {
+            NativeMethods.int2dds_publisher_qos_get_presentation(h, out var scope, out var coherent, out var ordered);
+
+            return new PublisherQos
+            {
+                Presentation = new Presentation((PresentationAccessScopeKind)scope, coherent, ordered),
+            };
+        }
+
+        /// <summary>True when <paramref name="qos"/> carries a policy that must reach a native subscriber QoS handle.</summary>
+        internal static bool HasSubscriberPolicies(SubscriberQos qos) =>
+            qos.Partition is { Names: { Length: var len } } && len > 0 || qos.Presentation != null;
+
+        /// <summary>Write the non-null policies of <paramref name="qos"/> onto a native subscriber QoS handle.</summary>
+        internal static unsafe void ApplySubscriberQos(IntPtr qosHandle, SubscriberQos qos)
+        {
+            if (qos.Partition is { Names: { Length: var len } } partition && len > 0)
+                ApplyPartition(qosHandle, partition, NativeMethods.int2dds_subscriber_qos_set_partition);
+
+            if (qos.Presentation != null)
+                ReturnCodeHelper.CheckReturn(NativeMethods.int2dds_subscriber_qos_set_presentation(
+                    qosHandle, (int)qos.Presentation.AccessScope, qos.Presentation.CoherentAccess,
+                    qos.Presentation.OrderedAccess));
+        }
+
+        /// <summary>Read the policies that have a native getter off a subscriber QoS handle. Partition is left null.</summary>
+        internal static SubscriberQos ReadSubscriberQos(IntPtr h)
+        {
+            NativeMethods.int2dds_subscriber_qos_get_presentation(h, out var scope, out var coherent, out var ordered);
+
+            return new SubscriberQos
+            {
+                Presentation = new Presentation((PresentationAccessScopeKind)scope, coherent, ordered),
+            };
+        }
+
+        private unsafe delegate int SetPartitionFn(IntPtr qos, byte** partitions, UIntPtr partitionCount);
+
+        private static unsafe void ApplyPartition(IntPtr qosHandle, Partition partition, SetPartitionFn setPartition)
+        {
+            var partitionByteArrays = partition.Names
+                .Select(n => Encoding.UTF8.GetBytes(n + '\0'))
+                .ToArray();
+            var pinnedArrays = new GCHandle[partitionByteArrays.Length];
+            for (int i = 0; i < partitionByteArrays.Length; i++)
+                pinnedArrays[i] = GCHandle.Alloc(partitionByteArrays[i], GCHandleType.Pinned);
+
+            try
+            {
+                var ptrs = new byte*[partitionByteArrays.Length];
+                for (int i = 0; i < ptrs.Length; i++)
+                    ptrs[i] = (byte*)pinnedArrays[i].AddrOfPinnedObject();
+                fixed (byte** pPartitions = ptrs)
+                {
+                    ReturnCodeHelper.CheckReturn(setPartition(qosHandle, pPartitions, (UIntPtr)partition.Names.Length));
+                }
+            }
+            finally
+            {
+                foreach (var pin in pinnedArrays)
+                    pin.Free();
+            }
         }
     }
 }

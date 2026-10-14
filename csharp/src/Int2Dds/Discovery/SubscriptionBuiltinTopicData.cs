@@ -192,6 +192,42 @@ namespace Int2Dds.Discovery
             }
         }
 
+        /// <summary>Presentation access scope: 0 = INSTANCE, 1 = TOPIC, 2 = GROUP.</summary>
+        public int PresentationAccessScope
+        {
+            get
+            {
+                if (_disposed) throw new ObjectDisposedException(GetType().Name);
+                ReturnCodeHelper.CheckReturn(
+                    NativeMethods.int2dds_subscription_builtin_topic_data_get_presentation(_handle, out var scope, out _, out _));
+                return scope;
+            }
+        }
+
+        /// <summary>Presentation coherent_access flag.</summary>
+        public bool PresentationCoherentAccess
+        {
+            get
+            {
+                if (_disposed) throw new ObjectDisposedException(GetType().Name);
+                ReturnCodeHelper.CheckReturn(
+                    NativeMethods.int2dds_subscription_builtin_topic_data_get_presentation(_handle, out _, out var coherent, out _));
+                return coherent;
+            }
+        }
+
+        /// <summary>Presentation ordered_access flag.</summary>
+        public bool PresentationOrderedAccess
+        {
+            get
+            {
+                if (_disposed) throw new ObjectDisposedException(GetType().Name);
+                ReturnCodeHelper.CheckReturn(
+                    NativeMethods.int2dds_subscription_builtin_topic_data_get_presentation(_handle, out _, out _, out var ordered));
+                return ordered;
+            }
+        }
+
         public void Dispose()
         {
             if (_disposed) return;

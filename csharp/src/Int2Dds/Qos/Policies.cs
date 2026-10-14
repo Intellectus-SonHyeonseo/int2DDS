@@ -255,6 +255,22 @@ namespace Int2Dds.Qos
         }
     }
 
+    public class Presentation
+    {
+        public PresentationAccessScopeKind AccessScope { get; set; } = PresentationAccessScopeKind.Instance;
+        public bool CoherentAccess { get; set; }
+        public bool OrderedAccess { get; set; }
+
+        public Presentation() { }
+        public Presentation(PresentationAccessScopeKind accessScope = PresentationAccessScopeKind.Instance,
+            bool coherentAccess = false, bool orderedAccess = false)
+        {
+            AccessScope = accessScope;
+            CoherentAccess = coherentAccess;
+            OrderedAccess = orderedAccess;
+        }
+    }
+
     /// <summary>
     /// PropertyQosPolicy entries (DomainParticipant only).
     /// The well-known name <c>int2dds.transport.UDPv4.multicast_ttl</c> configures
