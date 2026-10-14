@@ -14,6 +14,7 @@ import kr.co.intellectus.int2dds.qos.DestinationOrder;
 import kr.co.intellectus.int2dds.qos.DestinationOrderKind;
 import kr.co.intellectus.int2dds.qos.Durability;
 import kr.co.intellectus.int2dds.qos.DurabilityKind;
+import kr.co.intellectus.int2dds.qos.GroupData;
 import kr.co.intellectus.int2dds.qos.History;
 import kr.co.intellectus.int2dds.qos.HistoryKind;
 import kr.co.intellectus.int2dds.qos.LatencyBudget;
@@ -164,11 +165,16 @@ public final class QosMarshal {
                     q.getPartition(),
                     (names, count) -> FfiAccess.publisherQosSetPartition(h, names, count));
         }
+        if (q.getGroupData() != null) {
+            applyOctets(
+                    q.getGroupData().getData(),
+                    (addr, len) -> FfiAccess.publisherQosSetGroupData(h, addr, len));
+        }
     }
 
     /**
-     * Reads back a publisher QoS handle's {@code Presentation}. {@code Partition} has no getter and
-     * stays null.
+     * Reads back a publisher QoS handle's {@code Presentation} and {@code GroupData}. {@code
+     * Partition} has no getter and stays null.
      */
     public static PublisherQos readPublisherQos(long h) {
         int[] accessScope = new int[1];
@@ -184,6 +190,12 @@ public final class QosMarshal {
                         PresentationAccessScopeKind.fromValue(accessScope[0]),
                         coherentAccess[0],
                         orderedAccess[0]));
+        q.setGroupData(
+                new GroupData(
+                        readOctets(
+                                (buf, capacity, sizeOut) ->
+                                        FfiAccess.publisherQosGetGroupData(
+                                                h, buf, capacity, sizeOut))));
         return q;
     }
 
@@ -202,11 +214,16 @@ public final class QosMarshal {
                     q.getPartition(),
                     (names, count) -> FfiAccess.subscriberQosSetPartition(h, names, count));
         }
+        if (q.getGroupData() != null) {
+            applyOctets(
+                    q.getGroupData().getData(),
+                    (addr, len) -> FfiAccess.subscriberQosSetGroupData(h, addr, len));
+        }
     }
 
     /**
-     * Reads back a subscriber QoS handle's {@code Presentation}. {@code Partition} has no getter
-     * and stays null.
+     * Reads back a subscriber QoS handle's {@code Presentation} and {@code GroupData}. {@code
+     * Partition} has no getter and stays null.
      */
     public static SubscriberQos readSubscriberQos(long h) {
         int[] accessScope = new int[1];
@@ -222,6 +239,12 @@ public final class QosMarshal {
                         PresentationAccessScopeKind.fromValue(accessScope[0]),
                         coherentAccess[0],
                         orderedAccess[0]));
+        q.setGroupData(
+                new GroupData(
+                        readOctets(
+                                (buf, capacity, sizeOut) ->
+                                        FfiAccess.subscriberQosGetGroupData(
+                                                h, buf, capacity, sizeOut))));
         return q;
     }
 

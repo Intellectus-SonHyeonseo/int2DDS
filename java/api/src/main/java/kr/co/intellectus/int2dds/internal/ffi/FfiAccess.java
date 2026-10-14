@@ -1714,6 +1714,24 @@ public final class FfiAccess {
         return Ffi.int2dds_subscriber_qos_set_partition(qos, names, count);
     }
 
+    public static int publisherQosSetGroupData(long qos, long dataAddr, long dataLen) {
+        return Ffi.int2dds_publisher_qos_set_group_data(qos, dataAddr, dataLen);
+    }
+
+    public static int subscriberQosSetGroupData(long qos, long dataAddr, long dataLen) {
+        return Ffi.int2dds_subscriber_qos_set_group_data(qos, dataAddr, dataLen);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the group_data getter. */
+    public static int publisherQosGetGroupData(long qos, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_publisher_qos_get_group_data(qos, buf, capacity, sizeOut);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the group_data getter. */
+    public static int subscriberQosGetGroupData(long qos, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_subscriber_qos_get_group_data(qos, buf, capacity, sizeOut);
+    }
+
     // --- Presentation ---
 
     public static int publisherQosSetPresentation(
@@ -4235,6 +4253,12 @@ public final class FfiAccess {
                 data, buf, capacity, sizeOut);
     }
 
+    /** Direct passthrough for {@link #readGrowableBytes}: the group_data getter. */
+    public static int pubDataGetGroupData(long data, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_publication_builtin_topic_data_get_group_data(
+                data, buf, capacity, sizeOut);
+    }
+
     /** Direct passthrough for {@link #readGrowableBytes}: the topic_data getter. */
     public static int pubDataGetTopicData(long data, long buf, long capacity, long sizeOut) {
         return Ffi.int2dds_publication_builtin_topic_data_get_topic_data(
@@ -4501,6 +4525,12 @@ public final class FfiAccess {
     /** Direct passthrough for {@link #readGrowableBytes}: the user_data getter. */
     public static int subDataGetUserData(long data, long buf, long capacity, long sizeOut) {
         return Ffi.int2dds_subscription_builtin_topic_data_get_user_data(
+                data, buf, capacity, sizeOut);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the group_data getter. */
+    public static int subDataGetGroupData(long data, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_subscription_builtin_topic_data_get_group_data(
                 data, buf, capacity, sizeOut);
     }
 

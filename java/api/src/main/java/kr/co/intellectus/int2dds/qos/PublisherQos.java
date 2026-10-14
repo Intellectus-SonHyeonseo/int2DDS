@@ -11,6 +11,7 @@ public class PublisherQos {
 
     private Presentation presentation;
     private Partition partition;
+    private GroupData groupData;
 
     public PublisherQos() {}
 
@@ -30,6 +31,14 @@ public class PublisherQos {
         this.partition = partition;
     }
 
+    public GroupData getGroupData() {
+        return groupData;
+    }
+
+    public void setGroupData(GroupData groupData) {
+        this.groupData = groupData;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -40,16 +49,23 @@ public class PublisherQos {
         }
         PublisherQos other = (PublisherQos) o;
         return Objects.equals(presentation, other.presentation)
-                && Objects.equals(partition, other.partition);
+                && Objects.equals(partition, other.partition)
+                && Objects.equals(groupData, other.groupData);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(presentation, partition);
+        return Objects.hash(presentation, partition, groupData);
     }
 
     @Override
     public String toString() {
-        return "PublisherQos{presentation=" + presentation + ", partition=" + partition + "}";
+        return "PublisherQos{presentation="
+                + presentation
+                + ", partition="
+                + partition
+                + ", groupData="
+                + groupData
+                + "}";
     }
 }
