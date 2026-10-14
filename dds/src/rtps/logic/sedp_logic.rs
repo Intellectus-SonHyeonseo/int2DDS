@@ -2660,6 +2660,11 @@ impl UnicastMessageProcessor for SedpLogic {
                             "DiscoveredWriterData",
                         )?;
 
+                        if participant.is_publication_ignored(endpoint_guid) {
+                            debug!("SEDP Logic: discarding ignored publication {}", endpoint_guid);
+                            return Ok(());
+                        }
+
                         store_wire_in_cache(
                             endpoint_guid,
                             if is_termination {
@@ -2723,6 +2728,11 @@ impl UnicastMessageProcessor for SedpLogic {
                             &reader_data.subscription_builtin_topic_data.topic_name(),
                             "DiscoveredReaderData",
                         )?;
+
+                        if participant.is_subscription_ignored(endpoint_guid) {
+                            debug!("SEDP Logic: discarding ignored subscription {}", endpoint_guid);
+                            return Ok(());
+                        }
 
                         store_wire_in_cache(
                             endpoint_guid,

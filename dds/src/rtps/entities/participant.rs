@@ -15,7 +15,7 @@ use std::{
 };
 
 use arc_swap::ArcSwap;
-use dashmap::DashMap;
+use dashmap::{DashMap, DashSet};
 
 use log::{debug, info};
 
@@ -108,6 +108,10 @@ pub struct Participant {
 
     remote_publications: Arc<DashMap<String, HashMap<Guid, PublicationBuiltinTopicData>>>,
     remote_subscriptions: Arc<DashMap<String, HashMap<Guid, SubscriptionBuiltinTopicData>>>,
+
+    // Remote writers and readers the application ignored. Entries are never removed.
+    ignored_publications: Arc<DashSet<Guid>>,
+    ignored_subscriptions: Arc<DashSet<Guid>>,
 
     // Subscriber HistoryCaches of the GROUP access scope Subscribers, keyed by Subscriber GUID.
     // Weak so a deleted Subscriber drops out on the next walk.
@@ -210,6 +214,8 @@ impl Participant {
             current_entity_id: Arc::new(Mutex::new([0, 0, 0])),
             remote_publications: Arc::new(DashMap::new()),
             remote_subscriptions: Arc::new(DashMap::new()),
+            ignored_publications: Arc::new(DashSet::new()),
+            ignored_subscriptions: Arc::new(DashSet::new()),
             subscriber_history_caches: Arc::new(Mutex::new(HashMap::new())),
             type_registry: new_shared_registry(),
             working_ips,
@@ -274,6 +280,30 @@ impl Participant {
         &self,
     ) -> Arc<DashMap<String, HashMap<Guid, PublicationBuiltinTopicData>>> {
         self.remote_publications.clone()
+    }
+
+    // Records the writer as ignored and unmatches it from the local readers.
+    pub(crate) fn ignore_publication(&self, writer_guid: Guid) -> RtpsResult<()> {
+        self.ignored_publications.insert(writer_guid);
+        debug!("Ignoring remote publication {}", writer_guid);
+
+        self.cleanup_remote_writer_by_guid(writer_guid)
+    }
+
+    pub(crate) fn is_publication_ignored(&self, writer_guid: Guid) -> bool {
+        self.ignored_publications.contains(&writer_guid)
+    }
+
+    // Records the reader as ignored and unmatches it from the local writers.
+    pub(crate) fn ignore_subscription(&self, reader_guid: Guid) -> RtpsResult<()> {
+        self.ignored_subscriptions.insert(reader_guid);
+        debug!("Ignoring remote subscription {}", reader_guid);
+
+        self.cleanup_remote_reader_by_guid(reader_guid)
+    }
+
+    pub(crate) fn is_subscription_ignored(&self, reader_guid: Guid) -> bool {
+        self.ignored_subscriptions.contains(&reader_guid)
     }
 
     // Registering the same Subscriber again replaces its entry, which every reader of that
@@ -1077,6 +1107,12 @@ impl Participant {
     }
 
     pub(crate) fn cleanup_remote_writer_by_guid(&self, writer_guid: Guid) -> RtpsResult<()> {
+        if let Some(user_logic_arc) = self.user_logic_if_set() {
+            if let Some(user_logic) = user_logic_arc.as_ref() {
+                user_logic.forget_fragment_buffers_for_writer(writer_guid);
+            }
+        }
+
         if writer_guid.entity_id().entity_kind().is_user_defined() {
             if let Some(wlp_logic) = self.wlp_logic() {
                 let _ = wlp_logic.deregister_monitored_writer(writer_guid);

@@ -102,7 +102,7 @@ use crate::{
     publication::{publisher::Publisher, publisher_listener::PublisherListener, qos::PublisherQos},
     rtps::{
         builtin::data::participant_message_data::ParticipantMessageData,
-        common::{guid::Guid, rtps_error_code::RtpsErrorCode},
+        common::{entity_id::EntityId, guid::Guid, rtps_error_code::RtpsErrorCode},
         dcps_bridge::dcps_bridge::DcpsBridge,
         entities::{
             entity::Entity as RtpsEntity, participant::Participant as RtpsParticipant,
@@ -714,7 +714,7 @@ impl DomainParticipant {
     }
 
     // TODO: RTPS layer implementation must be completed first (Built-in)
-    pub fn ignore_publication(&self, _handle: InstanceHandle) -> DdsResult<()> {
+    pub fn ignore_publication(&self, handle: InstanceHandle) -> DdsResult<()> {
         /*
             ignore_publication
             This operation allows the application to instruct the service to locally ignore a remote publication.
@@ -733,16 +733,23 @@ impl DomainParticipant {
 
             OUT_OF_RESOURCES
         */
-        // match self.is_enabled() {
-        //     DdsError::Ok => (),
-        //     err_code => return Err(err_code),
-        // }
+        let _operation = self.lifecycle.begin_operation()?;
+        self.is_enabled()?;
+        self.reject_local_entity_handle(handle)?;
 
-        Err(DdsError::Unsupported)
+        self.get_rtps_participant()?
+            .ignore_publication(handle.to_guid())
+            .map_err(|e| DdsError::Error(e.message))?;
+
+        self.revoke_sedp_writer_ownership_of_builtin_instance::<PublicationBuiltinTopicData>(
+            "DCPSPublication",
+            EntityId::SEDP_BUILTIN_PUBLICATIONS_WRITER,
+            handle,
+        )
     }
 
     // TODO: RTPS layer implementation must be completed first (Built-in)
-    pub fn ignore_subscription(&self, _handle: InstanceHandle) -> DdsResult<()> {
+    pub fn ignore_subscription(&self, handle: InstanceHandle) -> DdsResult<()> {
         /*
             This operation allows the application to instruct the service to locally ignore a remote subscription.
             A subscription is defined by the combination of a topic name and the user data and partition set configured in the Subscriber
@@ -760,12 +767,19 @@ impl DomainParticipant {
 
             OUT_OF_RESOURCES
         */
-        // match self.is_enabled() {
-        //     DdsError::Ok => (),
-        //     err_code => return Err(err_code),
-        // }
+        let _operation = self.lifecycle.begin_operation()?;
+        self.is_enabled()?;
+        self.reject_local_entity_handle(handle)?;
 
-        Err(DdsError::Unsupported)
+        self.get_rtps_participant()?
+            .ignore_subscription(handle.to_guid())
+            .map_err(|e| DdsError::Error(e.message))?;
+
+        self.revoke_sedp_writer_ownership_of_builtin_instance::<SubscriptionBuiltinTopicData>(
+            "DCPSSubscription",
+            EntityId::SEDP_BUILTIN_SUBSCRIPTIONS_WRITER,
+            handle,
+        )
     }
 
     /// Creates a new `Publisher` for publishing data.
@@ -3058,6 +3072,43 @@ impl DomainParticipant {
         } else {
             Err(DdsError::NotEnabled)
         }
+    }
+
+    // Returns BadParameter when the handle identifies this participant or one of its entities.
+    fn reject_local_entity_handle(&self, handle: InstanceHandle) -> DdsResult<()> {
+        let local_prefix = self.get_instance_handle()?.to_guid().prefix();
+
+        if handle.to_guid().prefix() == local_prefix {
+            log::debug!("Rejected ignore of local entity {}", handle);
+            return Err(DdsError::BadParameter);
+        }
+
+        Ok(())
+    }
+
+    // Marks the built-in topic instance NOT_ALIVE_NO_WRITERS while the remote SEDP writer that
+    // announced it stays matched.
+    fn revoke_sedp_writer_ownership_of_builtin_instance<Foo: 'static + Clone + Debug>(
+        &self,
+        builtin_topic_name: &str,
+        sedp_writer_entity_id: EntityId,
+        instance_handle: InstanceHandle,
+    ) -> DdsResult<()> {
+        let builtin_reader =
+            self.get_builtin_subscriber()?.lookup_datareader::<Foo>(builtin_topic_name)?;
+        let sedp_writer_guid = Guid::new(instance_handle.to_guid().prefix(), sedp_writer_entity_id);
+
+        let datareader_cache = builtin_reader.get_datareader_cache()?;
+        let datareader_cache =
+            datareader_cache.lock().map_err(|e| DdsError::Error(e.to_string()))?;
+        datareader_cache.revoke_writer_ownership(
+            sedp_writer_guid,
+            Some(instance_handle),
+            true,
+            true,
+        )?;
+
+        Ok(())
     }
 
     pub(crate) fn disable(&self) -> DdsResult<()> {
