@@ -482,6 +482,48 @@ public final class DomainParticipant extends NativeEntity {
         }
     }
 
+    /** This participant's own DDS instance handle. */
+    public InstanceHandle getInstanceHandle() {
+        byte[] h = new byte[16];
+        int rc = FfiAccess.participantGetInstanceHandle(handle(), h);
+        NativeKeepAlive.keepAlive(this);
+        ReturnCodes.check(rc);
+        return new InstanceHandle(h);
+    }
+
+    /**
+     * Ignores a remote participant and its endpoints. The operation cannot be reversed. Throws for
+     * the handle of this participant itself (BAD_PARAMETER).
+     */
+    public void ignoreParticipant(InstanceHandle handle) {
+        Objects.requireNonNull(handle, "handle");
+        int rc = FfiAccess.participantIgnoreParticipant(handle(), handle.bytes());
+        NativeKeepAlive.keepAlive(this);
+        ReturnCodes.check(rc);
+    }
+
+    /**
+     * Ignores a remote publication. The operation cannot be reversed. Throws for the handle of a
+     * local DataWriter (BAD_PARAMETER).
+     */
+    public void ignorePublication(InstanceHandle handle) {
+        Objects.requireNonNull(handle, "handle");
+        int rc = FfiAccess.participantIgnorePublication(handle(), handle.bytes());
+        NativeKeepAlive.keepAlive(this);
+        ReturnCodes.check(rc);
+    }
+
+    /**
+     * Ignores a remote subscription. The operation cannot be reversed. Throws for the handle of a
+     * local DataReader (BAD_PARAMETER).
+     */
+    public void ignoreSubscription(InstanceHandle handle) {
+        Objects.requireNonNull(handle, "handle");
+        int rc = FfiAccess.participantIgnoreSubscription(handle(), handle.bytes());
+        NativeKeepAlive.keepAlive(this);
+        ReturnCodes.check(rc);
+    }
+
     /** Whether this participant contains the entity identified by {@code handle}. */
     public boolean containsEntity(InstanceHandle handle) {
         Objects.requireNonNull(handle, "handle");

@@ -830,6 +830,26 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1datareader_1get_1instance_1handle<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    reader: jlong,
+    handle_out: JByteArray<'local>,
+) -> jint {
+    let mut handle_out_out = [0u8; 16];
+    let __ret = unsafe {
+        int2dds_ffi::subscriber::int2dds_datareader_get_instance_handle(
+            reader as usize as *const _,
+            crate::generated_support::fixed_ptr_mut(&mut handle_out_out) as _,
+        )
+    };
+    crate::generated_support::write_back(&mut env, &handle_out, &handle_out_out);
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1datareader_1get_1key_1value<
     'local,
 >(
@@ -2521,6 +2541,26 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
         )
     };
     crate::generated_support::write_back(&mut env, &guid_out, &guid_out_out);
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1datawriter_1get_1instance_1handle<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    writer: jlong,
+    handle_out: JByteArray<'local>,
+) -> jint {
+    let mut handle_out_out = [0u8; 16];
+    let __ret = unsafe {
+        int2dds_ffi::publisher::int2dds_datawriter_get_instance_handle(
+            writer as usize as *const _,
+            crate::generated_support::fixed_ptr_mut(&mut handle_out_out) as _,
+        )
+    };
+    crate::generated_support::write_back(&mut env, &handle_out, &handle_out_out);
     __ret as _
 }
 
@@ -6540,6 +6580,26 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1participant_1get_1instance_1handle<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    participant: jlong,
+    handle_out: JByteArray<'local>,
+) -> jint {
+    let mut handle_out_out = [0u8; 16];
+    let __ret = unsafe {
+        int2dds_ffi::participant::int2dds_participant_get_instance_handle(
+            participant as usize as *const _,
+            crate::generated_support::fixed_ptr_mut(&mut handle_out_out) as _,
+        )
+    };
+    crate::generated_support::write_back(&mut env, &handle_out, &handle_out_out);
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1participant_1get_1qos<
     'local,
 >(
@@ -6588,6 +6648,63 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
         int2dds_ffi::status_condition::int2dds_participant_get_statuscondition(
             participant as usize as *const _,
             condition_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1participant_1ignore_1participant<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    participant: jlong,
+    handle: JByteArray<'local>,
+) -> jint {
+    let handle_in = crate::generated_support::take_fixed::<16>(&mut env, &handle);
+    let __ret = unsafe {
+        int2dds_ffi::discovery::int2dds_participant_ignore_participant(
+            participant as usize as *const _,
+            crate::generated_support::fixed_ptr(&handle_in) as _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1participant_1ignore_1publication<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    participant: jlong,
+    handle: JByteArray<'local>,
+) -> jint {
+    let handle_in = crate::generated_support::take_fixed::<16>(&mut env, &handle);
+    let __ret = unsafe {
+        int2dds_ffi::discovery::int2dds_participant_ignore_publication(
+            participant as usize as *const _,
+            crate::generated_support::fixed_ptr(&handle_in) as _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1participant_1ignore_1subscription<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    participant: jlong,
+    handle: JByteArray<'local>,
+) -> jint {
+    let handle_in = crate::generated_support::take_fixed::<16>(&mut env, &handle);
+    let __ret = unsafe {
+        int2dds_ffi::discovery::int2dds_participant_ignore_subscription(
+            participant as usize as *const _,
+            crate::generated_support::fixed_ptr(&handle_in) as _,
         )
     };
     __ret as _
