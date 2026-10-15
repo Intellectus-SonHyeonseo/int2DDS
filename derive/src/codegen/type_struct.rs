@@ -476,7 +476,7 @@ fn generate_key_holder_field_max_size(
             if let Some(bound) = cfg.bound {
                 quote! {
                     pos = #crate_path::serialize::key_holder_align_up(pos, 4);
-                    pos = pos.checked_add(4usize + 2usize * (#bound + 1))?;
+                    pos = pos.checked_add(4usize + 2usize * #bound)?;
                 }
             } else {
                 quote! { return None; }

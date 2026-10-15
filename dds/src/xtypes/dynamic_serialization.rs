@@ -1445,7 +1445,7 @@ fn type_kind_max_size(kind: &DynamicTypeKind) -> Option<(usize, usize)> {
         }
         DynamicTypeKind::Enum(_) => Some((4, 4)),
         DynamicTypeKind::String { bound: Some(n) } => Some((4, 4 + *n as usize + 1)),
-        DynamicTypeKind::WString { bound: Some(n) } => Some((4, 4 + 2 * (*n as usize + 1))),
+        DynamicTypeKind::WString { bound: Some(n) } => Some((4, 4 + 2 * *n as usize)),
         DynamicTypeKind::Struct(desc) => {
             // Nested key holder: project to its own @key members (member_id order),
             // or keep all members when it has none.

@@ -195,7 +195,7 @@ impl KeyHolder for String {
 }
 
 /// `WString` mirrors [`String`]: the bound is a field attribute, so a standalone
-/// wstring reports no finite maximum (the owning struct supplies `4 + 2*(bound+1)`
+/// wstring reports no finite maximum (the owning struct supplies `4 + 2*bound`
 /// for bounded wstring key fields).
 impl KeyHolder for WString {
     #[inline]
