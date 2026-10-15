@@ -104,6 +104,18 @@ def _apply_publisher_qos(handle: CData, qos: "PublisherQos") -> None:
             handle, data_ptr, len(qos.group_data.data)))
 
 
+def _has_publisher_policies(qos: "PublisherQos") -> bool:
+    """True when `qos` sets a policy that differs from the creation default.
+
+    A QoS without one is created with a NULL handle so the configured default
+    profile still applies.
+    """
+    return bool(
+        (qos.partition is not None and qos.partition.names)
+        or qos.presentation is not None
+        or (qos.group_data is not None and qos.group_data.data))
+
+
 class Publisher:
     """
     Publisher - groups DataWriters for coherent publication.
@@ -122,7 +134,7 @@ class Publisher:
         if profile is not None:
             check_ret(lib.int2dds_create_publisher_with_profile(
                 participant._handle, profile.encode(), publisher_ptr))
-        elif qos is not None:
+        elif qos is not None and _has_publisher_policies(qos):
             qos_handle_ptr = ffi.new("Int2DdsPublisherQos **")
             check_ret(lib.int2dds_publisher_qos_create_default(qos_handle_ptr))
             qos_handle = qos_handle_ptr[0]

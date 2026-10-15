@@ -147,6 +147,18 @@ def _apply_subscriber_qos(handle: CData, qos: "SubscriberQos") -> None:
             handle, data_ptr, len(qos.group_data.data)))
 
 
+def _has_subscriber_policies(qos: "SubscriberQos") -> bool:
+    """True when `qos` sets a policy that differs from the creation default.
+
+    A QoS without one is created with a NULL handle so the configured default
+    profile still applies.
+    """
+    return bool(
+        (qos.partition is not None and qos.partition.names)
+        or qos.presentation is not None
+        or (qos.group_data is not None and qos.group_data.data))
+
+
 class Subscriber:
     """
     Subscriber - groups DataReaders for coherent subscription.
@@ -168,7 +180,7 @@ class Subscriber:
         if profile is not None:
             check_ret(lib.int2dds_create_subscriber_with_profile(
                 participant._handle, profile.encode(), subscriber_ptr))
-        elif qos is not None:
+        elif qos is not None and _has_subscriber_policies(qos):
             qos_handle_ptr = ffi.new("Int2DdsSubscriberQos **")
             check_ret(lib.int2dds_subscriber_qos_create_default(qos_handle_ptr))
             qos_handle = qos_handle_ptr[0]
