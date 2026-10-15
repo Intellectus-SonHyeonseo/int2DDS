@@ -130,7 +130,7 @@ namespace Int2Dds.Core
         // core resolves properties and preserving values the caller did not override.
         private static void ApplyParticipantQos(IntPtr handle, ParticipantQos qos)
         {
-            if (qos.UserData != null && qos.UserData.Data != null && qos.UserData.Data.Length > 0)
+            if (qos.UserData != null && qos.UserData.Data != null)
             {
                 unsafe
                 {
@@ -468,14 +468,17 @@ namespace Int2Dds.Core
             }
         }
 
-        // Read the property collection back from a native handle. user_data has no
-        // native getter (consistent with DataWriter.GetQos) and is left unset.
+        // Read user_data and the property collection back from a native handle.
         internal static ParticipantQos ReadParticipantQos(IntPtr handle)
         {
             var property = new Property();
+            UserData userData;
             NativeMethods.ParticipantPropertyCallback collect;
             unsafe
             {
+                userData = new UserData(
+                    QosMarshal.ReadBytes(handle, NativeMethods.int2dds_participant_qos_get_user_data));
+
                 collect = (namePtr, valuePtr, _) =>
                 {
                     property.Add(NativeString.FromCStr(namePtr), NativeString.FromCStr(valuePtr));
@@ -488,7 +491,7 @@ namespace Int2Dds.Core
                         handle, emptyPrefix, collect, IntPtr.Zero));
             }
             GC.KeepAlive(collect);
-            return new ParticipantQos { Property = property };
+            return new ParticipantQos { UserData = userData, Property = property };
         }
 
         /// <summary>

@@ -1427,6 +1427,15 @@ public final class FfiAccess {
         return Ffi.int2dds_topic_qos_set_data_representation(qos, kind);
     }
 
+    public static int topicQosSetTopicData(long qos, long dataAddr, long dataLen) {
+        return Ffi.int2dds_topic_qos_set_topic_data(qos, dataAddr, dataLen);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the topic_data getter. */
+    public static int topicQosGetTopicData(long qos, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_topic_qos_get_topic_data(qos, buf, capacity, sizeOut);
+    }
+
     // --- DataWriter QoS setters ---
 
     public static int writerQosSetReliability(long qos, int kind, long maxBlockingTimeNs) {
@@ -1561,6 +1570,11 @@ public final class FfiAccess {
         return Ffi.int2dds_datawriter_qos_get_data_frag(qos, valueOut);
     }
 
+    /** Direct passthrough for {@link #readGrowableBytes}: the user_data getter. */
+    public static int writerQosGetUserData(long qos, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_datawriter_qos_get_user_data(qos, buf, capacity, sizeOut);
+    }
+
     // --- DataReader QoS setters ---
 
     public static int readerQosSetReliability(long qos, int kind, long maxBlockingTimeNs) {
@@ -1679,6 +1693,11 @@ public final class FfiAccess {
         return Ffi.int2dds_participant_qos_set_user_data(qos, dataAddr, dataLen);
     }
 
+    /** Direct passthrough for {@link #readGrowableBytes}: the user_data getter. */
+    public static int participantQosGetUserData(long qos, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_participant_qos_get_user_data(qos, buf, capacity, sizeOut);
+    }
+
     /** Adds or overwrites one text property entry (PropertyQosPolicy). */
     public static int participantQosAddProperty(
             long qos, byte[] name, byte[] value, boolean propagate) {
@@ -1693,6 +1712,143 @@ public final class FfiAccess {
 
     public static int subscriberQosSetPartition(long qos, byte[][] names, long count) {
         return Ffi.int2dds_subscriber_qos_set_partition(qos, names, count);
+    }
+
+    public static int publisherQosSetGroupData(long qos, long dataAddr, long dataLen) {
+        return Ffi.int2dds_publisher_qos_set_group_data(qos, dataAddr, dataLen);
+    }
+
+    public static int subscriberQosSetGroupData(long qos, long dataAddr, long dataLen) {
+        return Ffi.int2dds_subscriber_qos_set_group_data(qos, dataAddr, dataLen);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the group_data getter. */
+    public static int publisherQosGetGroupData(long qos, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_publisher_qos_get_group_data(qos, buf, capacity, sizeOut);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the group_data getter. */
+    public static int subscriberQosGetGroupData(long qos, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_subscriber_qos_get_group_data(qos, buf, capacity, sizeOut);
+    }
+
+    // --- Presentation ---
+
+    public static int publisherQosSetPresentation(
+            long qos, int accessScope, boolean coherentAccess, boolean orderedAccess) {
+        return Ffi.int2dds_publisher_qos_set_presentation(
+                qos, accessScope, coherentAccess, orderedAccess);
+    }
+
+    public static int subscriberQosSetPresentation(
+            long qos, int accessScope, boolean coherentAccess, boolean orderedAccess) {
+        return Ffi.int2dds_subscriber_qos_set_presentation(
+                qos, accessScope, coherentAccess, orderedAccess);
+    }
+
+    /**
+     * Writes the access scope ({@code INT2DDS_QOS_PRESENTATION_*}) to {@code accessScopeOut[0]} and
+     * the two flags to {@code coherentAccessOut[0]} / {@code orderedAccessOut[0]} on success.
+     */
+    public static int publisherQosGetPresentation(
+            long qos,
+            int[] accessScopeOut,
+            boolean[] coherentAccessOut,
+            boolean[] orderedAccessOut) {
+        ByteBuffer slot = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
+        long addr = directBufferAddress(slot);
+        int rc = Ffi.int2dds_publisher_qos_get_presentation(qos, addr, addr + 4, addr + 5);
+        NativeKeepAlive.keepAlive(slot);
+        if (rc == 0) {
+            readPresentationSlot(slot, accessScopeOut, coherentAccessOut, orderedAccessOut);
+        }
+        return rc;
+    }
+
+    /** Same contract as {@link #publisherQosGetPresentation}, for a subscriber QoS handle. */
+    public static int subscriberQosGetPresentation(
+            long qos,
+            int[] accessScopeOut,
+            boolean[] coherentAccessOut,
+            boolean[] orderedAccessOut) {
+        ByteBuffer slot = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
+        long addr = directBufferAddress(slot);
+        int rc = Ffi.int2dds_subscriber_qos_get_presentation(qos, addr, addr + 4, addr + 5);
+        NativeKeepAlive.keepAlive(slot);
+        if (rc == 0) {
+            readPresentationSlot(slot, accessScopeOut, coherentAccessOut, orderedAccessOut);
+        }
+        return rc;
+    }
+
+    /** Opens a coherent set on a publisher. Calls may be nested. */
+    public static int publisherBeginCoherentChanges(long publisher) {
+        return Ffi.int2dds_publisher_begin_coherent_changes(publisher);
+    }
+
+    /** Closes the coherent set; RET_PRECONDITION_NOT_MET without a matching begin. */
+    public static int publisherEndCoherentChanges(long publisher) {
+        return Ffi.int2dds_publisher_end_coherent_changes(publisher);
+    }
+
+    /** Opens a sample access block on a subscriber. Calls may be nested. */
+    public static int subscriberBeginAccess(long subscriber) {
+        return Ffi.int2dds_subscriber_begin_access(subscriber);
+    }
+
+    /**
+     * Closes the access block; RET_PRECONDITION_NOT_MET under GROUP access scope without a matching
+     * begin.
+     */
+    public static int subscriberEndAccess(long subscriber) {
+        return Ffi.int2dds_subscriber_end_access(subscriber);
+    }
+
+    /** Invokes the on_data_available listener of every datareader of a subscriber. */
+    public static int subscriberNotifyDatareaders(long subscriber) {
+        return Ffi.int2dds_subscriber_notify_datareaders(subscriber);
+    }
+
+    /**
+     * Writes up to {@code capacity} reader instance handles (16 bytes each, equal to the reader
+     * GUID) into {@code handles}, for the subscriber's readers holding samples that match the state
+     * masks. Returns rc; writes the TRUE total count to {@code countOut[0]} on success, even when
+     * it exceeds {@code capacity} -- same contract as {@link #getMatchedSubscriptions}.
+     */
+    public static int subscriberGetDatareaders(
+            long subscriber,
+            int sampleStateMask,
+            int viewStateMask,
+            int instanceStateMask,
+            byte[] handles,
+            long capacity,
+            long[] countOut) {
+        ByteBuffer slot = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
+        int rc =
+                Ffi.int2dds_subscriber_get_datareaders(
+                        subscriber,
+                        sampleStateMask,
+                        viewStateMask,
+                        instanceStateMask,
+                        handles,
+                        capacity,
+                        directBufferAddress(slot));
+        NativeKeepAlive.keepAlive(slot);
+        if (rc == 0) {
+            countOut[0] = slot.getLong(0);
+        }
+        return rc;
+    }
+
+    /** Reads an access scope at offset 0 and the two 1-byte bool flags at offsets 4 and 5. */
+    private static void readPresentationSlot(
+            ByteBuffer slot,
+            int[] accessScopeOut,
+            boolean[] coherentAccessOut,
+            boolean[] orderedAccessOut) {
+        accessScopeOut[0] = slot.getInt(0);
+        coherentAccessOut[0] = slot.get(4) != 0;
+        orderedAccessOut[0] = slot.get(5) != 0;
     }
 
     // --- Type info / dynamic sample (CDR conformance) ---
@@ -4097,6 +4253,36 @@ public final class FfiAccess {
                 data, buf, capacity, sizeOut);
     }
 
+    /** Direct passthrough for {@link #readGrowableBytes}: the group_data getter. */
+    public static int pubDataGetGroupData(long data, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_publication_builtin_topic_data_get_group_data(
+                data, buf, capacity, sizeOut);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the topic_data getter. */
+    public static int pubDataGetTopicData(long data, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_publication_builtin_topic_data_get_topic_data(
+                data, buf, capacity, sizeOut);
+    }
+
+    /** Same contract as {@link #publisherQosGetPresentation}, for a publication box. */
+    public static int pubDataGetPresentation(
+            long data,
+            int[] accessScopeOut,
+            boolean[] coherentAccessOut,
+            boolean[] orderedAccessOut) {
+        ByteBuffer slot = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
+        long addr = directBufferAddress(slot);
+        int rc =
+                Ffi.int2dds_publication_builtin_topic_data_get_presentation(
+                        data, addr, addr + 4, addr + 5);
+        NativeKeepAlive.keepAlive(slot);
+        if (rc == 0) {
+            readPresentationSlot(slot, accessScopeOut, coherentAccessOut, orderedAccessOut);
+        }
+        return rc;
+    }
+
     /** Reliability kind: 0 = BEST_EFFORT, 1 = RELIABLE. Writes it to {@code out[0]} on success. */
     public static int pubDataGetReliabilityKind(long data, int[] out) {
         ByteBuffer slot = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
@@ -4340,6 +4526,36 @@ public final class FfiAccess {
     public static int subDataGetUserData(long data, long buf, long capacity, long sizeOut) {
         return Ffi.int2dds_subscription_builtin_topic_data_get_user_data(
                 data, buf, capacity, sizeOut);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the group_data getter. */
+    public static int subDataGetGroupData(long data, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_subscription_builtin_topic_data_get_group_data(
+                data, buf, capacity, sizeOut);
+    }
+
+    /** Direct passthrough for {@link #readGrowableBytes}: the topic_data getter. */
+    public static int subDataGetTopicData(long data, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_subscription_builtin_topic_data_get_topic_data(
+                data, buf, capacity, sizeOut);
+    }
+
+    /** Same contract as {@link #subscriberQosGetPresentation}, for a subscription box. */
+    public static int subDataGetPresentation(
+            long data,
+            int[] accessScopeOut,
+            boolean[] coherentAccessOut,
+            boolean[] orderedAccessOut) {
+        ByteBuffer slot = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
+        long addr = directBufferAddress(slot);
+        int rc =
+                Ffi.int2dds_subscription_builtin_topic_data_get_presentation(
+                        data, addr, addr + 4, addr + 5);
+        NativeKeepAlive.keepAlive(slot);
+        if (rc == 0) {
+            readPresentationSlot(slot, accessScopeOut, coherentAccessOut, orderedAccessOut);
+        }
+        return rc;
     }
 
     /** Reliability kind: 0 = BEST_EFFORT, 1 = RELIABLE. Writes it to {@code out[0]} on success. */
@@ -5059,6 +5275,11 @@ public final class FfiAccess {
         return Ffi.int2dds_datareader_qos_get_lifespan_reference(qos, kindOut);
     }
 
+    /** Direct passthrough for {@link #readGrowableBytes}: the user_data getter. */
+    public static int readerQosGetUserData(long qos, long buf, long capacity, long sizeOut) {
+        return Ffi.int2dds_datareader_qos_get_user_data(qos, buf, capacity, sizeOut);
+    }
+
     // --- DataReader: loaned serialized take ---
 
     /**
@@ -5083,51 +5304,97 @@ public final class FfiAccess {
     // --- DataReader: loans ---
 
     public static int datareaderReadLoaned(
-            long reader, int maxSamples, int sampleStates, int viewStates, int instanceStates, long loanOut) {
+            long reader,
+            int maxSamples,
+            int sampleStates,
+            int viewStates,
+            int instanceStates,
+            long loanOut) {
         return Ffi.int2dds_datareader_read_loaned(
                 reader, maxSamples, sampleStates, viewStates, instanceStates, loanOut);
     }
 
     public static int datareaderTakeLoaned(
-            long reader, int maxSamples, int sampleStates, int viewStates, int instanceStates, long loanOut) {
+            long reader,
+            int maxSamples,
+            int sampleStates,
+            int viewStates,
+            int instanceStates,
+            long loanOut) {
         return Ffi.int2dds_datareader_take_loaned(
                 reader, maxSamples, sampleStates, viewStates, instanceStates, loanOut);
     }
 
-    public static int datareaderReadWConditionLoaned(long reader, long condition, int maxSamples, long loanOut) {
-        return Ffi.int2dds_datareader_read_w_condition_loaned(reader, condition, maxSamples, loanOut);
+    public static int datareaderReadWConditionLoaned(
+            long reader, long condition, int maxSamples, long loanOut) {
+        return Ffi.int2dds_datareader_read_w_condition_loaned(
+                reader, condition, maxSamples, loanOut);
     }
 
-    public static int datareaderTakeWConditionLoaned(long reader, long condition, int maxSamples, long loanOut) {
-        return Ffi.int2dds_datareader_take_w_condition_loaned(reader, condition, maxSamples, loanOut);
+    public static int datareaderTakeWConditionLoaned(
+            long reader, long condition, int maxSamples, long loanOut) {
+        return Ffi.int2dds_datareader_take_w_condition_loaned(
+                reader, condition, maxSamples, loanOut);
     }
 
     public static int datareaderReadInstanceLoaned(
-            long reader, byte[] handle, int maxSamples, int sampleStates, int viewStates, int instanceStates,
+            long reader,
+            byte[] handle,
+            int maxSamples,
+            int sampleStates,
+            int viewStates,
+            int instanceStates,
             long loanOut) {
         return Ffi.int2dds_datareader_read_instance_loaned(
                 reader, handle, maxSamples, sampleStates, viewStates, instanceStates, loanOut);
     }
 
     public static int datareaderTakeInstanceLoaned(
-            long reader, byte[] handle, int maxSamples, int sampleStates, int viewStates, int instanceStates,
+            long reader,
+            byte[] handle,
+            int maxSamples,
+            int sampleStates,
+            int viewStates,
+            int instanceStates,
             long loanOut) {
         return Ffi.int2dds_datareader_take_instance_loaned(
                 reader, handle, maxSamples, sampleStates, viewStates, instanceStates, loanOut);
     }
 
     public static int datareaderReadNextInstanceLoaned(
-            long reader, byte[] previousHandle, int maxSamples, int sampleStates, int viewStates,
-            int instanceStates, long loanOut) {
+            long reader,
+            byte[] previousHandle,
+            int maxSamples,
+            int sampleStates,
+            int viewStates,
+            int instanceStates,
+            long loanOut) {
         return Ffi.int2dds_datareader_read_next_instance_loaned(
-                reader, previousHandle, maxSamples, sampleStates, viewStates, instanceStates, loanOut);
+                reader,
+                previousHandle,
+                maxSamples,
+                sampleStates,
+                viewStates,
+                instanceStates,
+                loanOut);
     }
 
     public static int datareaderTakeNextInstanceLoaned(
-            long reader, byte[] previousHandle, int maxSamples, int sampleStates, int viewStates,
-            int instanceStates, long loanOut) {
+            long reader,
+            byte[] previousHandle,
+            int maxSamples,
+            int sampleStates,
+            int viewStates,
+            int instanceStates,
+            long loanOut) {
         return Ffi.int2dds_datareader_take_next_instance_loaned(
-                reader, previousHandle, maxSamples, sampleStates, viewStates, instanceStates, loanOut);
+                reader,
+                previousHandle,
+                maxSamples,
+                sampleStates,
+                viewStates,
+                instanceStates,
+                loanOut);
     }
 
     public static int datareaderReadNextInstanceWConditionLoaned(
