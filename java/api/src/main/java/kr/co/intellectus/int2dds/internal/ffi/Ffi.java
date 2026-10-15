@@ -56,6 +56,7 @@ public final class Ffi {
     static native int int2dds_datareader_create_querycondition(long reader, int sample_state_mask, int view_state_mask, int instance_state_mask, byte[] query_expression, byte[][] query_parameters, long query_parameters_count, long condition_out);
     static native int int2dds_datareader_create_readcondition(long reader, int sample_state_mask, int view_state_mask, int instance_state_mask, long condition_out);
     static native int int2dds_datareader_get_guid(long reader, byte[] guid_out);
+    static native int int2dds_datareader_get_instance_handle(long reader, byte[] handle_out);
     static native int int2dds_datareader_get_key_value(long reader, byte[] handle, long key_buf, long key_capacity, long key_size_out);
     static native int int2dds_datareader_get_listener(long reader, long listener_out);
     static native int int2dds_datareader_get_liveliness_changed_status(long reader, long status_out);
@@ -137,6 +138,7 @@ public final class Ffi {
     static native int int2dds_datawriter_data_representation(long writer);
     static native int int2dds_datawriter_dispose(long writer, long key, long key_len, byte[] handle);
     static native int int2dds_datawriter_get_guid(long writer, byte[] guid_out);
+    static native int int2dds_datawriter_get_instance_handle(long writer, byte[] handle_out);
     static native int int2dds_datawriter_get_key_value(long writer, byte[] handle, long key_buf, long key_capacity, long key_size_out);
     static native int int2dds_datawriter_get_listener(long writer, long listener_out);
     static native int int2dds_datawriter_get_liveliness_lost_status(long writer, long status_out);
@@ -341,9 +343,13 @@ public final class Ffi {
     static native int int2dds_participant_get_discovered_participant_data(long participant, byte[] handle, long data_out);
     static native int int2dds_participant_get_discovered_participants(long participant, byte[] handles_out, long capacity, long count_out);
     static native int int2dds_participant_get_domain_id(long participant, long domain_id_out);
+    static native int int2dds_participant_get_instance_handle(long participant, byte[] handle_out);
     static native int int2dds_participant_get_qos(long participant, long qos_out);
     static native int int2dds_participant_get_status_changes(long participant, long mask_out);
     static native int int2dds_participant_get_statuscondition(long participant, long condition_out);
+    static native int int2dds_participant_ignore_participant(long participant, byte[] handle);
+    static native int int2dds_participant_ignore_publication(long participant, byte[] handle);
+    static native int int2dds_participant_ignore_subscription(long participant, byte[] handle);
     static native int int2dds_participant_qos_add_binary_property(long qos, byte[] name, long data, long data_len, boolean propagate);
     static native int int2dds_participant_qos_add_property(long qos, byte[] name, byte[] value, boolean propagate);
     static native int int2dds_participant_qos_create_default(long qos_out);

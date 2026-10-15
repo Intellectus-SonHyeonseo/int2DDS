@@ -1061,6 +1061,14 @@ public final class FfiAccess {
     }
 
     /**
+     * The 16-byte instance handle identifying this writer. {@code handleOut} must be a 16-byte
+     * array.
+     */
+    public static int datawriterGetInstanceHandle(long writer, byte[] handleOut) {
+        return Ffi.int2dds_datawriter_get_instance_handle(writer, handleOut);
+    }
+
+    /**
      * Reads the writer's PUBLICATION_MATCHED status into the 32-byte native struct at {@code
      * statusOutAddr} (a direct-buffer address, the caller's responsibility to allocate and keep
      * alive). Returns the C ABI status code. Thin passthrough -- the caller owns the buffer and
@@ -1304,6 +1312,14 @@ public final class FfiAccess {
     /** The 16-byte entity GUID. {@code guidOut} must be a 16-byte array. */
     public static int datareaderGetGuid(long reader, byte[] guidOut) {
         return Ffi.int2dds_datareader_get_guid(reader, guidOut);
+    }
+
+    /**
+     * The 16-byte instance handle identifying this reader. {@code handleOut} must be a 16-byte
+     * array.
+     */
+    public static int datareaderGetInstanceHandle(long reader, byte[] handleOut) {
+        return Ffi.int2dds_datareader_get_instance_handle(reader, handleOut);
     }
 
     /**
@@ -4463,6 +4479,29 @@ public final class FfiAccess {
             dataOut[0] = slot.getLong(0);
         }
         return rc;
+    }
+
+    /**
+     * The 16-byte instance handle identifying this participant. {@code handleOut} must be a 16-byte
+     * array.
+     */
+    public static int participantGetInstanceHandle(long participant, byte[] handleOut) {
+        return Ffi.int2dds_participant_get_instance_handle(participant, handleOut);
+    }
+
+    /** Ignores the remote participant identified by the 16-byte {@code handle}. */
+    public static int participantIgnoreParticipant(long participant, byte[] handle) {
+        return Ffi.int2dds_participant_ignore_participant(participant, handle);
+    }
+
+    /** Ignores the remote publication identified by the 16-byte {@code handle}. */
+    public static int participantIgnorePublication(long participant, byte[] handle) {
+        return Ffi.int2dds_participant_ignore_publication(participant, handle);
+    }
+
+    /** Ignores the remote subscription identified by the 16-byte {@code handle}. */
+    public static int participantIgnoreSubscription(long participant, byte[] handle) {
+        return Ffi.int2dds_participant_ignore_subscription(participant, handle);
     }
 
     /**
