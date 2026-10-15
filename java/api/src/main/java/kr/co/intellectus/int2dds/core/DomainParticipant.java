@@ -411,9 +411,8 @@ public final class DomainParticipant extends NativeEntity {
     }
 
     /**
-     * This participant's current QoS. Only {@code Property} entries can be read back; {@code
-     * UserData} has no native getter and is left null, and each entry's {@code propagate} flag
-     * reads back as false.
+     * This participant's current QoS: {@code UserData} and the text {@code Property} entries. Each
+     * entry's {@code propagate} flag reads back as false.
      */
     public ParticipantQos getQos() {
         long[] qosOut = new long[1];
@@ -787,9 +786,8 @@ public final class DomainParticipant extends NativeEntity {
      * current value), and destroys it again once the native {@code set_qos} call returns — success
      * or failure, thrown or not, the same build-apply-destroy shape {@link #createWithQos} uses for
      * the create path. {@code ParticipantQos} declares no immutable policies in this core, so a
-     * change to {@code Property} succeeds regardless of whether this participant is already
-     * enabled; {@code UserData} is this type's one unsupported policy -- rejected outright, mutable
-     * or not -- see {@code check_unsupported_policies} in dds/src/dcps/domain/qos/mod.rs.
+     * change to {@code UserData} or {@code Property} succeeds regardless of whether this
+     * participant is already enabled.
      *
      * @throws NullPointerException if {@code qos} is null
      */
