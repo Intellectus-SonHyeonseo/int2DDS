@@ -24,10 +24,14 @@ const DISCOVERY_TIMEOUT: StdDuration = StdDuration::from_secs(10);
 
 const POLL_INTERVAL: StdDuration = StdDuration::from_millis(50);
 
+// Enables the participant regardless of the factory autoenable setting.
 fn create_participant(domain_id: i32, qos: DomainParticipantQos) -> DomainParticipant {
-    DomainParticipantFactory::get_instance()
+    let participant = DomainParticipantFactory::get_instance()
         .create_participant(domain_id, qos, None, StatusMask::default())
-        .unwrap()
+        .unwrap();
+
+    participant.enable().unwrap();
+    participant
 }
 
 fn delete_participant(participant: DomainParticipant) {
