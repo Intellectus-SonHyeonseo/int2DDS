@@ -65,7 +65,11 @@ impl<'a> CdrDeserializer<'a> {
     /// Deserialize wide character string (UTF-16)
     pub fn deserialize_wstring16(&mut self) -> Result<String, CdrError> {
         // Length is in bytes (XTypes 1.3 7.4.1.1.2).
-        let length = self.read_u32()? as usize / 2;
+        let byte_len = self.read_u32()? as usize;
+        if !byte_len.is_multiple_of(2) {
+            return Err(CdrError::InvalidString);
+        }
+        let length = byte_len / 2;
 
         self.align(2);
         let mut utf16_chars = Vec::with_capacity(self.checked_capacity(length, 2)?);
@@ -168,7 +172,11 @@ impl<'a> Xcdr2Deserializer<'a> {
 
     /// Deserialize wide character string (UTF-16)
     pub fn deserialize_wstring16(&mut self) -> Result<String, CdrError> {
-        let length = self.read_u32()? as usize / 2;
+        let byte_len = self.read_u32()? as usize;
+        if !byte_len.is_multiple_of(2) {
+            return Err(CdrError::InvalidString);
+        }
+        let length = byte_len / 2;
         self.align(2);
         let mut utf16_chars = Vec::with_capacity(self.checked_capacity(length, 2)?);
         for _ in 0..length {
