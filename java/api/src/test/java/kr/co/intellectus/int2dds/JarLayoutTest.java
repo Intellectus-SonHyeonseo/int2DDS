@@ -36,12 +36,12 @@ class JarLayoutTest {
     void ffiDeclaresTheFullGeneratedSurface() {
         // The FFM Ffi declares no natives at all; that is the point of it.
         assumeTrue(FfiHandwritten.backend().equals("jni"), "JNI backend only");
-        // 475 generated natives + directBufferAddress.
+        // 514 generated natives + directBufferAddress.
         long natives =
                 java.util.Arrays.stream(Ffi.class.getDeclaredMethods())
                         .filter(m -> java.lang.reflect.Modifier.isNative(m.getModifiers()))
                         .count();
-        assertEquals(476, natives, "generated native method count");
+        assertEquals(515, natives, "generated native method count");
     }
 
     @Test
