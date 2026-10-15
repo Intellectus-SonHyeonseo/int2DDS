@@ -4,7 +4,7 @@ use crate::{common::*, create_participant, delete_participant, wait_for};
 use int2dds::{
     common::instance_handle::InstanceHandle,
     domain::qos::DomainParticipantQos,
-    infrastructure::qos_policy::GroupDataQosPolicy,
+    infrastructure::{qos_policy::GroupDataQosPolicy, status::StatusMask},
     publication::{
         data_writer::DataWriter,
         qos::{DataWriterQos, PublisherQos},
@@ -156,4 +156,96 @@ fn group_data_change_is_visible_to_remote_endpoints() {
     drop(data_reader);
     delete_participant(writer_participant);
     delete_participant(reader_participant);
+}
+
+#[test]
+fn group_data_change_is_visible_to_endpoints_created_later_on_same_participant() {
+    let domain_id = next_domain_id();
+    let initial_publisher_group_data = b"initial-publisher-group-data".to_vec();
+    let initial_subscriber_group_data = b"initial-subscriber-group-data".to_vec();
+    let changed_publisher_group_data = b"changed-publisher-group-data".to_vec();
+    let changed_subscriber_group_data = b"changed-subscriber-group-data".to_vec();
+
+    let participant = create_participant(domain_id, DomainParticipantQos::default());
+
+    let data_writer = create_datawriter(
+        &participant,
+        PublisherQos {
+            group_data: GroupDataQosPolicy { value: initial_publisher_group_data.clone() },
+            ..Default::default()
+        },
+        DataWriterQos::default(),
+    );
+    let topic = data_writer.get_topic().unwrap();
+    let subscriber = participant
+        .create_subscriber(
+            SubscriberQos {
+                group_data: GroupDataQosPolicy { value: initial_subscriber_group_data.clone() },
+                ..Default::default()
+            },
+            None,
+            StatusMask::default(),
+        )
+        .unwrap();
+    let data_reader = subscriber
+        .create_datareader::<KeyedDataType>(
+            &topic,
+            DataReaderQos::default(),
+            None,
+            StatusMask::default(),
+        )
+        .unwrap();
+
+    let publisher = data_writer.get_publisher().unwrap();
+    let mut changed_publisher_qos = publisher.get_qos().unwrap();
+    changed_publisher_qos.group_data =
+        GroupDataQosPolicy { value: changed_publisher_group_data.clone() };
+    publisher.set_qos(changed_publisher_qos).unwrap();
+
+    let mut changed_subscriber_qos = subscriber.get_qos().unwrap();
+    changed_subscriber_qos.group_data =
+        GroupDataQosPolicy { value: changed_subscriber_group_data.clone() };
+    subscriber.set_qos(changed_subscriber_qos).unwrap();
+
+    // Endpoints created after the change must match with the changed values.
+    let later_data_reader = participant
+        .create_subscriber(SubscriberQos::default(), None, StatusMask::default())
+        .unwrap()
+        .create_datareader::<KeyedDataType>(
+            &topic,
+            DataReaderQos::default(),
+            None,
+            StatusMask::default(),
+        )
+        .unwrap();
+    let later_data_writer = participant
+        .create_publisher(PublisherQos::default(), None, StatusMask::default())
+        .unwrap()
+        .create_datawriter::<KeyedDataType>(
+            &topic,
+            DataWriterQos::default(),
+            None,
+            StatusMask::default(),
+        )
+        .unwrap();
+
+    let writer_handle = data_writer.get_instance_handle().unwrap();
+    let reader_handle = data_reader.get_instance_handle().unwrap();
+
+    let received_publisher_group_data =
+        wait_for(|| matched_publication_group_data(&later_data_reader, writer_handle));
+    assert_eq!(received_publisher_group_data, Some(changed_publisher_group_data));
+
+    let received_subscriber_group_data =
+        wait_for(|| matched_subscription_group_data(&later_data_writer, reader_handle));
+    assert_eq!(received_subscriber_group_data, Some(changed_subscriber_group_data));
+
+    drop(later_data_writer);
+    drop(later_data_reader);
+    drop(publisher);
+    drop(subscriber);
+    drop(data_writer);
+    drop(data_reader);
+    drop(topic);
+    delete_participant(participant);
 }

@@ -354,6 +354,7 @@ impl EnableChild for DomainParticipant {
     }
     fn update_rtps_entity(&self, qos: &Self::Qos) -> DdsResult<()> {
         if self.is_enabled().is_err() {
+            self.get_rtps_participant()?.set_local_user_data(qos.user_data.clone());
             return Ok(());
         }
 

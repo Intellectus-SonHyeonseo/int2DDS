@@ -735,6 +735,12 @@ impl DcpsBridge {
             })?
             .add_change_builtin(cache_change.clone(), sedp_writer.as_ref());
 
+        self.participant
+            .remote_subscriptions()
+            .entry(subscription_builtin_topic_data.topic_name().to_string())
+            .or_default()
+            .insert(datareader_guid, subscription_builtin_topic_data.clone());
+
         self.send_sedp_message_and_match(
             cache_change,
             subscription_builtin_topic_data.topic_name().as_str(),
@@ -805,6 +811,12 @@ impl DcpsBridge {
                 )
             })?
             .add_change_builtin(cache_change.clone(), sedp_writer.as_ref());
+
+        self.participant
+            .remote_publications()
+            .entry(publication_builtin_topic_data.topic_name().to_string())
+            .or_default()
+            .insert(datawriter_guid, publication_builtin_topic_data.clone());
 
         self.send_sedp_message_and_match(
             cache_change,
