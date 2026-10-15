@@ -1445,6 +1445,7 @@ ffi.cdef("""
     Int2DdsRet int2dds_dynamic_sample_get_u64(const uint8_t *bytes, uintptr_t len, const Int2DdsTypeObject *type_obj, const char *field_name, uint64_t *out);
     Int2DdsRet int2dds_dynamic_sample_get_f32(const uint8_t *bytes, uintptr_t len, const Int2DdsTypeObject *type_obj, const char *field_name, float *out);
     Int2DdsRet int2dds_dynamic_sample_get_f64(const uint8_t *bytes, uintptr_t len, const Int2DdsTypeObject *type_obj, const char *field_name, double *out);
+    Int2DdsRet int2dds_dynamic_sample_get_f128(const uint8_t *bytes, uintptr_t len, const Int2DdsTypeObject *type_obj, const char *field_name, uint8_t *out);
     Int2DdsRet int2dds_dynamic_sample_get_string(const uint8_t *bytes, uintptr_t len, const Int2DdsTypeObject *type_obj, const char *field_name, char *out_buf, uintptr_t buf_cap, uintptr_t *out_len);
 
     /* DynamicData decoding (dotted/indexed field paths, e.g. "pos.x", "items[2]") */
@@ -1461,6 +1462,7 @@ ffi.cdef("""
     Int2DdsRet int2dds_dynamic_data_get_u64(const Int2DdsDynamicData *data, const char *field_path, uint64_t *out);
     Int2DdsRet int2dds_dynamic_data_get_f32(const Int2DdsDynamicData *data, const char *field_path, float *out);
     Int2DdsRet int2dds_dynamic_data_get_f64(const Int2DdsDynamicData *data, const char *field_path, double *out);
+    Int2DdsRet int2dds_dynamic_data_get_f128(const Int2DdsDynamicData *data, const char *field_path, uint8_t *out);
     Int2DdsRet int2dds_dynamic_data_get_char8(const Int2DdsDynamicData *data, const char *field_path, uint8_t *out);
     Int2DdsRet int2dds_dynamic_data_get_string(const Int2DdsDynamicData *data, const char *field_path, char *out_buf, uintptr_t buf_cap, uintptr_t *out_len);
     Int2DdsRet int2dds_dynamic_data_get_len(const Int2DdsDynamicData *data, const char *field_path, uintptr_t *out);
@@ -1628,6 +1630,7 @@ ffi.cdef("""
     Int2DdsRet int2dds_dynamic_data_set_u64(Int2DdsDynamicData *data, const char *field, uint64_t value);
     Int2DdsRet int2dds_dynamic_data_set_f32(Int2DdsDynamicData *data, const char *field, float value);
     Int2DdsRet int2dds_dynamic_data_set_f64(Int2DdsDynamicData *data, const char *field, double value);
+    Int2DdsRet int2dds_dynamic_data_set_f128(Int2DdsDynamicData *data, const char *field, const uint8_t *value);
     Int2DdsRet int2dds_dynamic_data_set_char8(Int2DdsDynamicData *data, const char *field, uint8_t value);
     Int2DdsRet int2dds_dynamic_data_set_string(Int2DdsDynamicData *data, const char *field, const char *value);
     Int2DdsRet int2dds_dynamic_data_set_value(Int2DdsDynamicData *data, const char *field, Int2DdsDynamicValue *value);
@@ -1645,6 +1648,7 @@ ffi.cdef("""
     Int2DdsRet int2dds_dynamic_value_u64(uint64_t value, Int2DdsDynamicValue **out);
     Int2DdsRet int2dds_dynamic_value_f32(float value, Int2DdsDynamicValue **out);
     Int2DdsRet int2dds_dynamic_value_f64(double value, Int2DdsDynamicValue **out);
+    Int2DdsRet int2dds_dynamic_value_f128(const uint8_t *value, Int2DdsDynamicValue **out);
     Int2DdsRet int2dds_dynamic_value_byte(uint8_t value, Int2DdsDynamicValue **out);
     Int2DdsRet int2dds_dynamic_value_bitmask(uint64_t value, Int2DdsDynamicValue **out);
     Int2DdsRet int2dds_dynamic_value_bitset(uint64_t value, Int2DdsDynamicValue **out);
@@ -1674,6 +1678,10 @@ ffi.cdef("""
     Int2DdsRet int2dds_dynamic_value_as_u64(const Int2DdsDynamicValue *value, uint64_t *out);
     Int2DdsRet int2dds_dynamic_value_as_f32(const Int2DdsDynamicValue *value, float *out);
     Int2DdsRet int2dds_dynamic_value_as_f64(const Int2DdsDynamicValue *value, double *out);
+    Int2DdsRet int2dds_dynamic_value_as_f128(const Int2DdsDynamicValue *value, uint8_t *out);
+    Int2DdsRet int2dds_float128_parse(const char *text, uint8_t *out);
+    Int2DdsRet int2dds_float128_from_f64(double value, uint8_t *out);
+    Int2DdsRet int2dds_float128_to_f64(const uint8_t *value, double *out);
     Int2DdsRet int2dds_dynamic_value_as_char8(const Int2DdsDynamicValue *value, uint8_t *out);
     Int2DdsRet int2dds_dynamic_value_as_string(const Int2DdsDynamicValue *value, char *buf, uintptr_t buf_len, uintptr_t *out_len);
     Int2DdsRet int2dds_dynamic_value_to_string(const Int2DdsDynamicValue *value, char *buf, uintptr_t buf_len, uintptr_t *out_len);
