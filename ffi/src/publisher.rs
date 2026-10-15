@@ -185,6 +185,26 @@ pub unsafe extern "C" fn int2dds_publisher_get_instance_handle(
     INT2DDS_RET_OK
 }
 
+/// Get the 16-byte instance handle of a DataWriter.
+///
+/// # Safety
+/// - `writer` must be a valid datawriter
+/// - `handle_out` must point to a 16-byte buffer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_datawriter_get_instance_handle(
+    writer: *const Int2DdsDataWriter,
+    handle_out: *mut [u8; 16],
+) -> Int2DdsRet {
+    check_null!(writer);
+    check_null!(handle_out);
+
+    let writer_ref = &*writer;
+    let handle = ffi_try!(writer_ref.inner.get_instance_handle());
+    *handle_out = *handle.value();
+
+    INT2DDS_RET_OK
+}
+
 /// Set QoS on a DataWriter
 ///
 /// Applies new QoS policies to an existing DataWriter. Some policies can only

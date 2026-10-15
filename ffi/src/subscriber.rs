@@ -518,6 +518,26 @@ pub unsafe extern "C" fn int2dds_datareader_get_listener(
     }
 }
 
+/// Get the 16-byte instance handle of a DataReader.
+///
+/// # Safety
+/// - `reader` must be a valid datareader
+/// - `handle_out` must point to a 16-byte buffer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_datareader_get_instance_handle(
+    reader: *const Int2DdsDataReader,
+    handle_out: *mut [u8; 16],
+) -> Int2DdsRet {
+    check_null!(reader);
+    check_null!(handle_out);
+
+    let reader_ref = &*reader;
+    let handle = ffi_try!(reader_ref.inner.get_instance_handle());
+    *handle_out = *handle.value();
+
+    INT2DDS_RET_OK
+}
+
 /// Set QoS on a DataReader
 ///
 /// # Safety
