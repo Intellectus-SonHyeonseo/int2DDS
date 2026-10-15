@@ -176,6 +176,9 @@ namespace Int2Dds.Interop
         internal static unsafe extern int int2dds_datareader_get_guid(IntPtr reader, byte* guid_out);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static unsafe extern int int2dds_datareader_get_instance_handle(IntPtr reader, byte* handle_out);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static extern int int2dds_datareader_has_data(IntPtr reader, [MarshalAs(UnmanagedType.U1)] out bool has_data_out);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]

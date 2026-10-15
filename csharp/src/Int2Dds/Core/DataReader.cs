@@ -544,6 +544,21 @@ namespace Int2Dds.Core
             return guid;
         }
 
+        /// <summary>
+        /// Gets this DataReader's instance handle.
+        /// </summary>
+        public unsafe InstanceHandle GetInstanceHandle()
+        {
+            if (_disposed) throw new ObjectDisposedException(GetType().Name);
+            var handle = new byte[16];
+            fixed (byte* p = handle)
+            {
+                ReturnCodeHelper.CheckReturn(
+                    NativeMethods.int2dds_datareader_get_instance_handle(_handle, p));
+            }
+            return new InstanceHandle(handle);
+        }
+
         /// <summary>Returns whether the reader currently has any data available.</summary>
         public bool HasData()
         {

@@ -107,6 +107,9 @@ namespace Int2Dds.Interop
         internal static unsafe extern int int2dds_datawriter_get_guid(IntPtr writer, byte* guid_out);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static unsafe extern int int2dds_datawriter_get_instance_handle(IntPtr writer, byte* handle_out);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static unsafe extern int int2dds_datawriter_get_offered_incompatible_type_status(IntPtr writer, NativeOfferedIncompatibleTypeStatus* status_out);
     }
 }
