@@ -216,6 +216,7 @@ public final class Ffi {
     static native int int2dds_dynamic_data_from_sample(long participant, long bytes, long len, long type_obj, long out);
     static native int int2dds_dynamic_data_get_bool(long data, byte[] field_path, long out);
     static native int int2dds_dynamic_data_get_char8(long data, byte[] field_path, long out);
+    static native int int2dds_dynamic_data_get_f128(long data, byte[] field_path, long out);
     static native int int2dds_dynamic_data_get_f32(long data, byte[] field_path, long out);
     static native int int2dds_dynamic_data_get_f64(long data, byte[] field_path, long out);
     static native int int2dds_dynamic_data_get_i16(long data, byte[] field_path, long out);
@@ -232,6 +233,7 @@ public final class Ffi {
     static native int int2dds_dynamic_data_get_value(long data, byte[] path, long out);
     static native int int2dds_dynamic_data_set_bool(long data, byte[] field, boolean value);
     static native int int2dds_dynamic_data_set_char8(long data, byte[] field, int value);
+    static native int int2dds_dynamic_data_set_f128(long data, byte[] field, long value);
     static native int int2dds_dynamic_data_set_f32(long data, byte[] field, float value);
     static native int int2dds_dynamic_data_set_f64(long data, byte[] field, double value);
     static native int int2dds_dynamic_data_set_i16(long data, byte[] field, int value);
@@ -252,6 +254,7 @@ public final class Ffi {
     static native int int2dds_dynamic_sample_get_bool(long bytes, long len, long type_obj, byte[] field_name, long out);
     static native int int2dds_dynamic_sample_get_byte(long bytes, long len, long type_obj, byte[] field_name, long out);
     static native int int2dds_dynamic_sample_get_char8(long bytes, long len, long type_obj, byte[] field_name, long out);
+    static native int int2dds_dynamic_sample_get_f128(long bytes, long len, long type_obj, byte[] field_name, long out);
     static native int int2dds_dynamic_sample_get_f32(long bytes, long len, long type_obj, byte[] field_name, long out);
     static native int int2dds_dynamic_sample_get_f64(long bytes, long len, long type_obj, byte[] field_name, long out);
     static native int int2dds_dynamic_sample_get_i16(long bytes, long len, long type_obj, byte[] field_name, long out);
@@ -270,6 +273,7 @@ public final class Ffi {
     static native int int2dds_dynamic_value_as_bool(long value, long out);
     static native int int2dds_dynamic_value_as_char8(long value, long out);
     static native int int2dds_dynamic_value_as_enum(long value, byte[] buf, long buf_len, long out_len, long out_value);
+    static native int int2dds_dynamic_value_as_f128(long value, long out);
     static native int int2dds_dynamic_value_as_f32(long value, long out);
     static native int int2dds_dynamic_value_as_f64(long value, long out);
     static native int int2dds_dynamic_value_as_i16(long value, long out);
@@ -290,6 +294,7 @@ public final class Ffi {
     static native void int2dds_dynamic_value_destroy(long value);
     static native int int2dds_dynamic_value_element(long value, long index, long out);
     static native int int2dds_dynamic_value_enum(byte[] name, int value, long out);
+    static native int int2dds_dynamic_value_f128(long value, long out);
     static native int int2dds_dynamic_value_f32(float value, long out);
     static native int int2dds_dynamic_value_f64(double value, long out);
     static native int int2dds_dynamic_value_i16(int value, long out);
@@ -323,6 +328,9 @@ public final class Ffi {
     static native int int2dds_env_set_default_qos_profile(byte[] profile);
     static native int int2dds_env_set_multicast_ttl(int ttl);
     static native int int2dds_env_set_qos_profile(byte[] path);
+    static native int int2dds_float128_from_f64(double value, long out);
+    static native int int2dds_float128_parse(byte[] text, long out);
+    static native int int2dds_float128_to_f64(long value, long out);
     static native int int2dds_get_dynamic_type_support(byte[] type_name, long out);
     static native int int2dds_guardcondition_delete(long condition);
     static native int int2dds_guardcondition_get_trigger_value(long condition, long value_out);

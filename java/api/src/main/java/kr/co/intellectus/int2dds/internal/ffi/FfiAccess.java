@@ -316,6 +316,115 @@ public final class FfiAccess {
         return rc;
     }
 
+    // float128 crosses the C ABI as 16 little-endian bytes behind a pointer; these helpers stage
+    // the Java byte[16] carrier in direct buffers.
+
+    private static ByteBuffer f128Buffer(byte[] value) {
+        ByteBuffer buf = ByteBuffer.allocateDirect(16);
+        if (value != null) {
+            buf.put(value, 0, 16);
+        }
+        return buf;
+    }
+
+    private static void copyF128(ByteBuffer buf, byte[] out) {
+        for (int i = 0; i < 16; i++) {
+            out[i] = buf.get(i);
+        }
+    }
+
+    /** Creates a {@code float128} dynamic value from 16 LE bytes, writing the handle to {@code out[0]}. */
+    public static int dynamicValueF128(byte[] value, long[] out) {
+        ByteBuffer in = f128Buffer(value);
+        ByteBuffer slot = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
+        int rc = Ffi.int2dds_dynamic_value_f128(directBufferAddress(in), directBufferAddress(slot));
+        NativeKeepAlive.keepAlive(in);
+        NativeKeepAlive.keepAlive(slot);
+        if (rc == 0) {
+            out[0] = slot.getLong(0);
+        }
+        return rc;
+    }
+
+    /** Reads a dynamic value as {@code float128} into {@code out} (16 LE bytes). */
+    public static int dynamicValueAsF128(long value, byte[] out) {
+        ByteBuffer slot = f128Buffer(null);
+        int rc = Ffi.int2dds_dynamic_value_as_f128(value, directBufferAddress(slot));
+        NativeKeepAlive.keepAlive(slot);
+        if (rc == 0) {
+            copyF128(slot, out);
+        }
+        return rc;
+    }
+
+    /** Reads a {@code float128} field at {@code path} into {@code out} (16 LE bytes). */
+    public static int dynamicDataGetF128(long d, byte[] path, byte[] out) {
+        ByteBuffer slot = f128Buffer(null);
+        int rc = Ffi.int2dds_dynamic_data_get_f128(d, path, directBufferAddress(slot));
+        NativeKeepAlive.keepAlive(slot);
+        if (rc == 0) {
+            copyF128(slot, out);
+        }
+        return rc;
+    }
+
+    /** Sets a {@code float128} field at {@code field} from 16 LE bytes. */
+    public static int dynamicDataSetF128(long data, byte[] field, byte[] value) {
+        ByteBuffer in = f128Buffer(value);
+        int rc = Ffi.int2dds_dynamic_data_set_f128(data, field, directBufferAddress(in));
+        NativeKeepAlive.keepAlive(in);
+        return rc;
+    }
+
+    /** Decodes one {@code float128} field out of a serialized sample into {@code out} (16 LE bytes). */
+    public static int dynamicSampleGetF128(
+            long bytes, long len, long typeObj, byte[] fieldName, byte[] out) {
+        ByteBuffer slot = f128Buffer(null);
+        int rc =
+                Ffi.int2dds_dynamic_sample_get_f128(
+                        bytes, len, typeObj, fieldName, directBufferAddress(slot));
+        NativeKeepAlive.keepAlive(slot);
+        if (rc == 0) {
+            copyF128(slot, out);
+        }
+        return rc;
+    }
+
+    /** Parses a decimal literal into {@code out} (16 LE bytes), correctly rounded. */
+    public static int float128Parse(byte[] text, byte[] out) {
+        ByteBuffer slot = f128Buffer(null);
+        int rc = Ffi.int2dds_float128_parse(text, directBufferAddress(slot));
+        NativeKeepAlive.keepAlive(slot);
+        if (rc == 0) {
+            copyF128(slot, out);
+        }
+        return rc;
+    }
+
+    /** Widens {@code value} exactly into {@code out} (16 LE bytes). */
+    public static int float128FromF64(double value, byte[] out) {
+        ByteBuffer slot = f128Buffer(null);
+        int rc = Ffi.int2dds_float128_from_f64(value, directBufferAddress(slot));
+        NativeKeepAlive.keepAlive(slot);
+        if (rc == 0) {
+            copyF128(slot, out);
+        }
+        return rc;
+    }
+
+    /** Narrows {@code value} (16 LE bytes) to the nearest double, written to {@code out[0]}. */
+    public static int float128ToF64(byte[] value, double[] out) {
+        ByteBuffer in = f128Buffer(value);
+        ByteBuffer slot = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
+        int rc = Ffi.int2dds_float128_to_f64(directBufferAddress(in), directBufferAddress(slot));
+        NativeKeepAlive.keepAlive(in);
+        NativeKeepAlive.keepAlive(slot);
+        if (rc == 0) {
+            out[0] = slot.getDouble(0);
+        }
+        return rc;
+    }
+
     /**
      * Creates an empty sequence dynamic value, writing the handle to {@code out[0]} on success.
      * Append elements with {@link #dynamicValuePush}.

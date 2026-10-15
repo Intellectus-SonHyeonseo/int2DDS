@@ -1187,6 +1187,7 @@ impl Participant {
                 stateless_reader.remove_matched_writer_and_update_status(writer_guid)?;
             }
         }
+        self.forget_type_rejections(writer_guid);
 
         self.remove_matched_writer_from_subscriber_history_caches(writer_guid)?;
 
@@ -1209,8 +1210,17 @@ impl Participant {
                 stateless_writer.remove_matched_reader_and_update_status(reader_guid)?;
             }
         }
+        self.forget_type_rejections(reader_guid);
 
         Ok(())
+    }
+
+    // Every endpoint removal path ends in the two callers above, so the once-only
+    // type-rejection records are dropped here instead of at each dispose site.
+    fn forget_type_rejections(&self, endpoint_guid: Guid) {
+        if let Some(sedp_logic) = self.sedp_logic.get().and_then(|logic| logic.as_ref().as_ref()) {
+            sedp_logic.forget_type_rejections(endpoint_guid);
+        }
     }
 
     pub(crate) fn find_readers_matched_with_local_writer(
