@@ -12,6 +12,8 @@ on:
       - "idl/**"
       - "java/**"
       - ".github/workflows/java.yml"
+      - ".github/scripts/ci/check-jni-drift.sh"
+      - ".github/scripts/ci/check-idl-java.sh"
       - "Cargo.toml"
       - "Cargo.lock"
       - "rustfmt.toml"
@@ -43,7 +45,7 @@ jobs:
 
       - name: Check for generator drift
         shell: bash
-        run: ./java/scripts/check-jni-drift.sh
+        run: ./.github/scripts/ci/check-jni-drift.sh
 
       - name: Verify the C ABI surface against the FFI library
         shell: bash
@@ -101,7 +103,7 @@ jobs:
       # builds java/api/build/classes itself when the runner has none.
       - name: Check the IDL Java backend
         shell: bash
-        run: ./java/scripts/check-idl-java.sh
+        run: ./.github/scripts/ci/check-idl-java.sh
 
   # The JNI crate's own tests and the Java suite against the built library.
   # Windows is in the matrix because the JNI path is the one every JDK below

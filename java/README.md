@@ -51,7 +51,7 @@ backend:
 | JDK 8 – 21 | `INT2DDS_JAVA_LIB` | path of `int2dds_java` |
 | JDK 22+ | `INT2DDS_FFI_PATH` | path of `int2dds_ffi`, or of its directory — the same variable the C# and Python bindings read |
 
-Gradle's own test, example and benchmark tasks set both for you, picking the platform's
+Gradle's own test and example tasks set both for you, picking the platform's
 file names; set them by hand only when running outside Gradle:
 
 ```bash
@@ -261,7 +261,6 @@ Gradle modules (`settings.gradle.kts`):
 |---|---|
 | `api` | The public Java API — packages `core`, `qos`, `cdr`, `types`, `conditions`, `listeners`, `discovery`, `xtypes`, `async`, `status`, `exceptions`, plus internal `internal` |
 | `examples` | `HelloWorldPub` / `HelloWorldSub` |
-| `bench` | JMH benchmarks |
 
 `native/` is not a Gradle module — it is the Rust crate (`int2dds-java`) that builds
 the JNI library, and is built with `cargo`. The JDK 22+ backend needs no crate of its
@@ -277,7 +276,7 @@ The JNI layer and both `Ffi.java` variants are **generated** from the FFI surfac
 
 ```bash
 cargo run -p int2dds-java --bin gen-jni
-./java/scripts/check-jni-drift.sh    # fails if the committed output is stale
+./.github/scripts/ci/check-jni-drift.sh    # fails if the committed output is stale
 ```
 
 ## Tests
@@ -285,7 +284,7 @@ cargo run -p int2dds-java --bin gen-jni
 ```bash
 cd java && ./gradlew test          # the Java suite
 cargo test -p int2dds-java         # the JNI crate's own tests
-./java/scripts/check-idl-java.sh   # generated Java compiles; committed golden type is current
+./.github/scripts/ci/check-idl-java.sh   # generated Java compiles; committed golden type is current
 ```
 
 `GeneratedTypeConformanceTest` hands bytes produced by a **generated** type to the

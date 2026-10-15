@@ -7,7 +7,7 @@ allprojects {
     group = "kr.co.intellectus.int2dds"
 }
 
-// The native library the test, example and benchmark tasks load: the one
+// The native library the test and example tasks load: the one
 // `cargo build --release -p int2dds-java` produces, unless INT2DDS_JAVA_LIB names another.
 val int2ddsJavaLib by extra(
     System.getenv("INT2DDS_JAVA_LIB") ?: file(
