@@ -18,6 +18,15 @@ namespace Int2Dds.Interop
         internal static unsafe extern int int2dds_participant_get_discovered_participant_data(IntPtr participant, byte* handle, out IntPtr data_out);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static unsafe extern int int2dds_participant_ignore_participant(IntPtr participant, byte* handle);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static unsafe extern int int2dds_participant_ignore_publication(IntPtr participant, byte* handle);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
+        internal static unsafe extern int int2dds_participant_ignore_subscription(IntPtr participant, byte* handle);
+
+        [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
         internal static unsafe extern int int2dds_datawriter_get_matched_subscription_data(IntPtr writer, byte* handle, out IntPtr data_out);
 
         [DllImport("int2dds_ffi", CallingConvention = CallingConvention.Cdecl)]
