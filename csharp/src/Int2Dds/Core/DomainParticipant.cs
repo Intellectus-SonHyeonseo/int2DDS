@@ -291,6 +291,21 @@ namespace Int2Dds.Core
         }
 
         /// <summary>
+        /// Gets this participant's instance handle.
+        /// </summary>
+        public unsafe InstanceHandle GetInstanceHandle()
+        {
+            if (_disposed) throw new ObjectDisposedException(GetType().Name);
+            var handle = new byte[16];
+            fixed (byte* p = handle)
+            {
+                ReturnCodeHelper.CheckReturn(
+                    NativeMethods.int2dds_participant_get_instance_handle(_handle, p));
+            }
+            return new InstanceHandle(handle);
+        }
+
+        /// <summary>
         /// Returns whether an entity with the given 16-byte instance handle
         /// belongs to this participant.
         /// </summary>
@@ -364,6 +379,51 @@ namespace Int2Dds.Core
                     }
                     return handles;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Ignores a remote participant and its endpoints. The operation cannot be reversed.
+        /// Throws for the handle of this participant itself (BAD_PARAMETER).
+        /// </summary>
+        public unsafe void IgnoreParticipant(InstanceHandle handle)
+        {
+            if (_disposed) throw new ObjectDisposedException(GetType().Name);
+            var handleBytes = handle.ToByteArray();
+            fixed (byte* p = handleBytes)
+            {
+                ReturnCodeHelper.CheckReturn(
+                    NativeMethods.int2dds_participant_ignore_participant(_handle, p));
+            }
+        }
+
+        /// <summary>
+        /// Ignores a remote publication. The operation cannot be reversed.
+        /// Throws for the handle of a local DataWriter (BAD_PARAMETER).
+        /// </summary>
+        public unsafe void IgnorePublication(InstanceHandle handle)
+        {
+            if (_disposed) throw new ObjectDisposedException(GetType().Name);
+            var handleBytes = handle.ToByteArray();
+            fixed (byte* p = handleBytes)
+            {
+                ReturnCodeHelper.CheckReturn(
+                    NativeMethods.int2dds_participant_ignore_publication(_handle, p));
+            }
+        }
+
+        /// <summary>
+        /// Ignores a remote subscription. The operation cannot be reversed.
+        /// Throws for the handle of a local DataReader (BAD_PARAMETER).
+        /// </summary>
+        public unsafe void IgnoreSubscription(InstanceHandle handle)
+        {
+            if (_disposed) throw new ObjectDisposedException(GetType().Name);
+            var handleBytes = handle.ToByteArray();
+            fixed (byte* p = handleBytes)
+            {
+                ReturnCodeHelper.CheckReturn(
+                    NativeMethods.int2dds_participant_ignore_subscription(_handle, p));
             }
         }
 

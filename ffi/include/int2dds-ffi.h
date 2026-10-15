@@ -1248,6 +1248,39 @@ Int2DdsRet int2dds_participant_get_discovered_participant_data(const struct Int2
                                                                struct Int2DdsParticipantBuiltinTopicData **data_out);
 
 /**
+ * Ignore a remote participant. The operation cannot be reversed.
+ * Returns BAD_PARAMETER for the handle of the participant itself.
+ *
+ * # Safety
+ * - `participant` must be a valid participant
+ * - `handle` must point to a 16-byte buffer
+ */
+Int2DdsRet int2dds_participant_ignore_participant(const struct Int2DdsParticipant *participant,
+                                                  const uint8_t (*handle)[16]);
+
+/**
+ * Ignore a remote publication. The operation cannot be reversed.
+ * Returns BAD_PARAMETER for the handle of a local DataWriter.
+ *
+ * # Safety
+ * - `participant` must be a valid participant
+ * - `handle` must point to a 16-byte buffer
+ */
+Int2DdsRet int2dds_participant_ignore_publication(const struct Int2DdsParticipant *participant,
+                                                  const uint8_t (*handle)[16]);
+
+/**
+ * Ignore a remote subscription. The operation cannot be reversed.
+ * Returns BAD_PARAMETER for the handle of a local DataReader.
+ *
+ * # Safety
+ * - `participant` must be a valid participant
+ * - `handle` must point to a 16-byte buffer
+ */
+Int2DdsRet int2dds_participant_ignore_subscription(const struct Int2DdsParticipant *participant,
+                                                   const uint8_t (*handle)[16]);
+
+/**
  * Get matched subscription data for a given handle.
  * On success, `*data_out` receives a heap-allocated opaque pointer.
  * The caller must free it with `int2dds_subscription_builtin_topic_data_destroy`.
@@ -2771,6 +2804,16 @@ Int2DdsRet int2dds_participant_get_domain_id(const struct Int2DdsParticipant *pa
                                              int32_t *domain_id_out);
 
 /**
+ * Get the 16-byte instance handle of a participant.
+ *
+ * # Safety
+ * - `participant` must be a valid participant
+ * - `handle_out` must point to a 16-byte buffer
+ */
+Int2DdsRet int2dds_participant_get_instance_handle(const struct Int2DdsParticipant *participant,
+                                                   uint8_t (*handle_out)[16]);
+
+/**
  * Set the QoS of a participant.
  *
  * # Safety
@@ -2910,6 +2953,16 @@ Int2DdsRet int2dds_publisher_get_qos(const struct Int2DdsPublisher *publisher,
  */
 Int2DdsRet int2dds_publisher_get_instance_handle(const struct Int2DdsPublisher *publisher,
                                                  uint8_t (*handle_out)[16]);
+
+/**
+ * Get the 16-byte instance handle of a DataWriter.
+ *
+ * # Safety
+ * - `writer` must be a valid datawriter
+ * - `handle_out` must point to a 16-byte buffer
+ */
+Int2DdsRet int2dds_datawriter_get_instance_handle(const struct Int2DdsDataWriter *writer,
+                                                  uint8_t (*handle_out)[16]);
 
 /**
  * Begin a coherent set on a Publisher.
@@ -4902,6 +4955,16 @@ Int2DdsRet int2dds_datareader_set_listener(struct Int2DdsDataReader *reader,
  */
 Int2DdsRet int2dds_datareader_get_listener(const struct Int2DdsDataReader *reader,
                                            struct Int2DdsDataReaderListener *listener_out);
+
+/**
+ * Get the 16-byte instance handle of a DataReader.
+ *
+ * # Safety
+ * - `reader` must be a valid datareader
+ * - `handle_out` must point to a 16-byte buffer
+ */
+Int2DdsRet int2dds_datareader_get_instance_handle(const struct Int2DdsDataReader *reader,
+                                                  uint8_t (*handle_out)[16]);
 
 /**
  * Set QoS on a DataReader

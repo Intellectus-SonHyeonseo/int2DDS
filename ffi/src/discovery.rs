@@ -703,6 +703,66 @@ pub unsafe extern "C" fn int2dds_participant_get_discovered_participant_data(
     INT2DDS_RET_OK
 }
 
+/// Ignore a remote participant. The operation cannot be reversed.
+/// Returns BAD_PARAMETER for the handle of the participant itself.
+///
+/// # Safety
+/// - `participant` must be a valid participant
+/// - `handle` must point to a 16-byte buffer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_participant_ignore_participant(
+    participant: *const Int2DdsParticipant,
+    handle: *const [u8; 16],
+) -> Int2DdsRet {
+    check_null!(participant);
+    check_null!(handle);
+
+    let participant_ref = &*participant;
+    ffi_try!(participant_ref.inner.ignore_participant(InstanceHandle::new(*handle)));
+
+    INT2DDS_RET_OK
+}
+
+/// Ignore a remote publication. The operation cannot be reversed.
+/// Returns BAD_PARAMETER for the handle of a local DataWriter.
+///
+/// # Safety
+/// - `participant` must be a valid participant
+/// - `handle` must point to a 16-byte buffer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_participant_ignore_publication(
+    participant: *const Int2DdsParticipant,
+    handle: *const [u8; 16],
+) -> Int2DdsRet {
+    check_null!(participant);
+    check_null!(handle);
+
+    let participant_ref = &*participant;
+    ffi_try!(participant_ref.inner.ignore_publication(InstanceHandle::new(*handle)));
+
+    INT2DDS_RET_OK
+}
+
+/// Ignore a remote subscription. The operation cannot be reversed.
+/// Returns BAD_PARAMETER for the handle of a local DataReader.
+///
+/// # Safety
+/// - `participant` must be a valid participant
+/// - `handle` must point to a 16-byte buffer
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_participant_ignore_subscription(
+    participant: *const Int2DdsParticipant,
+    handle: *const [u8; 16],
+) -> Int2DdsRet {
+    check_null!(participant);
+    check_null!(handle);
+
+    let participant_ref = &*participant;
+    ffi_try!(participant_ref.inner.ignore_subscription(InstanceHandle::new(*handle)));
+
+    INT2DDS_RET_OK
+}
+
 /// Get matched subscription data for a given handle.
 /// On success, `*data_out` receives a heap-allocated opaque pointer.
 /// The caller must free it with `int2dds_subscription_builtin_topic_data_destroy`.

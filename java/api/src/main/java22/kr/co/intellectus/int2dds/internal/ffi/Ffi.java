@@ -535,6 +535,19 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_datareader_get_instance_handle = dc("int2dds_datareader_get_instance_handle", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS));
+
+    static int int2dds_datareader_get_instance_handle(long reader, byte[] handle_out) {
+        try (Arena __ffi_arena = Arena.ofConfined()) {
+            MemorySegment __ffi_seg_handle_out = (handle_out == null) ? MemorySegment.NULL : __ffi_arena.allocate(16);
+            int __ffi_ret = (int) MH_int2dds_datareader_get_instance_handle.invokeExact(reader, __ffi_seg_handle_out);
+            if (handle_out != null) MemorySegment.copy(__ffi_seg_handle_out, JAVA_BYTE, 0, handle_out, 0, Math.min(handle_out.length, 16));
+            return __ffi_ret;
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_datareader_get_instance_handle", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_datareader_get_key_value = dc("int2dds_datareader_get_key_value", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_LONG, JAVA_LONG));
 
     static int int2dds_datareader_get_key_value(long reader, byte[] handle, long key_buf, long key_capacity, long key_size_out) {
@@ -1384,6 +1397,19 @@ public final class Ffi {
             return __ffi_ret;
         } catch (Throwable __ffi_thrown) {
             throw new AssertionError("FFM downcall failed: int2dds_datawriter_get_guid", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_datawriter_get_instance_handle = dc("int2dds_datawriter_get_instance_handle", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS));
+
+    static int int2dds_datawriter_get_instance_handle(long writer, byte[] handle_out) {
+        try (Arena __ffi_arena = Arena.ofConfined()) {
+            MemorySegment __ffi_seg_handle_out = (handle_out == null) ? MemorySegment.NULL : __ffi_arena.allocate(16);
+            int __ffi_ret = (int) MH_int2dds_datawriter_get_instance_handle.invokeExact(writer, __ffi_seg_handle_out);
+            if (handle_out != null) MemorySegment.copy(__ffi_seg_handle_out, JAVA_BYTE, 0, handle_out, 0, Math.min(handle_out.length, 16));
+            return __ffi_ret;
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_datawriter_get_instance_handle", __ffi_thrown);
         }
     }
 
@@ -3605,6 +3631,19 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_participant_get_instance_handle = dc("int2dds_participant_get_instance_handle", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS));
+
+    static int int2dds_participant_get_instance_handle(long participant, byte[] handle_out) {
+        try (Arena __ffi_arena = Arena.ofConfined()) {
+            MemorySegment __ffi_seg_handle_out = (handle_out == null) ? MemorySegment.NULL : __ffi_arena.allocate(16);
+            int __ffi_ret = (int) MH_int2dds_participant_get_instance_handle.invokeExact(participant, __ffi_seg_handle_out);
+            if (handle_out != null) MemorySegment.copy(__ffi_seg_handle_out, JAVA_BYTE, 0, handle_out, 0, Math.min(handle_out.length, 16));
+            return __ffi_ret;
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_participant_get_instance_handle", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_participant_get_qos = dc("int2dds_participant_get_qos", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG));
 
     static int int2dds_participant_get_qos(long participant, long qos_out) {
@@ -3632,6 +3671,42 @@ public final class Ffi {
             return (int) MH_int2dds_participant_get_statuscondition.invokeExact(participant, condition_out);
         } catch (Throwable __ffi_thrown) {
             throw new AssertionError("FFM downcall failed: int2dds_participant_get_statuscondition", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_participant_ignore_participant = dc("int2dds_participant_ignore_participant", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS));
+
+    static int int2dds_participant_ignore_participant(long participant, byte[] handle) {
+        try (Arena __ffi_arena = Arena.ofConfined()) {
+            MemorySegment __ffi_seg_handle = (handle == null) ? MemorySegment.NULL : __ffi_arena.allocate(16);
+            if (handle != null) MemorySegment.copy(handle, 0, __ffi_seg_handle, JAVA_BYTE, 0, Math.min(handle.length, 16));
+            return (int) MH_int2dds_participant_ignore_participant.invokeExact(participant, __ffi_seg_handle);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_participant_ignore_participant", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_participant_ignore_publication = dc("int2dds_participant_ignore_publication", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS));
+
+    static int int2dds_participant_ignore_publication(long participant, byte[] handle) {
+        try (Arena __ffi_arena = Arena.ofConfined()) {
+            MemorySegment __ffi_seg_handle = (handle == null) ? MemorySegment.NULL : __ffi_arena.allocate(16);
+            if (handle != null) MemorySegment.copy(handle, 0, __ffi_seg_handle, JAVA_BYTE, 0, Math.min(handle.length, 16));
+            return (int) MH_int2dds_participant_ignore_publication.invokeExact(participant, __ffi_seg_handle);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_participant_ignore_publication", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_participant_ignore_subscription = dc("int2dds_participant_ignore_subscription", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS));
+
+    static int int2dds_participant_ignore_subscription(long participant, byte[] handle) {
+        try (Arena __ffi_arena = Arena.ofConfined()) {
+            MemorySegment __ffi_seg_handle = (handle == null) ? MemorySegment.NULL : __ffi_arena.allocate(16);
+            if (handle != null) MemorySegment.copy(handle, 0, __ffi_seg_handle, JAVA_BYTE, 0, Math.min(handle.length, 16));
+            return (int) MH_int2dds_participant_ignore_subscription.invokeExact(participant, __ffi_seg_handle);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_participant_ignore_subscription", __ffi_thrown);
         }
     }
 

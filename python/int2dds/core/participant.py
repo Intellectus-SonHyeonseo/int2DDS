@@ -371,6 +371,46 @@ class DomainParticipant:
         check_ret(lib.int2dds_participant_get_current_time(self._handle, sec_out, nsec_out))
         return sec_out[0], nsec_out[0]
 
+    def get_instance_handle(self) -> bytes:
+        """Get this participant's 16-byte instance handle."""
+        buf = ffi.new("uint8_t[16]")
+        check_ret(lib.int2dds_participant_get_instance_handle(
+            self._handle, ffi.cast("uint8_t(*)[16]", buf)))
+        return bytes(ffi.buffer(buf, 16))
+
+    def ignore_participant(self, handle: bytes) -> None:
+        """Ignore a remote participant and its endpoints. Cannot be reversed.
+
+        Raises for the handle of this participant itself (BAD_PARAMETER).
+        """
+        if len(handle) != 16:
+            raise ValueError("instance handle must be 16 bytes")
+        handle_c = ffi.new("uint8_t[16]", list(handle))
+        check_ret(lib.int2dds_participant_ignore_participant(
+            self._handle, ffi.cast("const uint8_t(*)[16]", handle_c)))
+
+    def ignore_publication(self, handle: bytes) -> None:
+        """Ignore a remote publication. Cannot be reversed.
+
+        Raises for the handle of a local DataWriter (BAD_PARAMETER).
+        """
+        if len(handle) != 16:
+            raise ValueError("instance handle must be 16 bytes")
+        handle_c = ffi.new("uint8_t[16]", list(handle))
+        check_ret(lib.int2dds_participant_ignore_publication(
+            self._handle, ffi.cast("const uint8_t(*)[16]", handle_c)))
+
+    def ignore_subscription(self, handle: bytes) -> None:
+        """Ignore a remote subscription. Cannot be reversed.
+
+        Raises for the handle of a local DataReader (BAD_PARAMETER).
+        """
+        if len(handle) != 16:
+            raise ValueError("instance handle must be 16 bytes")
+        handle_c = ffi.new("uint8_t[16]", list(handle))
+        check_ret(lib.int2dds_participant_ignore_subscription(
+            self._handle, ffi.cast("const uint8_t(*)[16]", handle_c)))
+
     def contains_entity(self, handle: bytes) -> bool:
         """Return whether an entity with the given 16-byte instance handle
         belongs to this participant."""
