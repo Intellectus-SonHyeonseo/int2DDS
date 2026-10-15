@@ -37,6 +37,7 @@ namespace Int2Dds.Core
         }
 
         private readonly IntPtr _handle;
+        private readonly Subscriber _subscriber;
         private readonly Topic<T> _topic;
         private byte[] _buffer;
         private IntPtr _listenerContextHandle;
@@ -48,6 +49,7 @@ namespace Int2Dds.Core
         internal DataReader(Subscriber subscriber, Topic<T> topic, DataReaderQos? qos = null,
             IDataReaderListener? listener = null, uint statusMask = 0xFFFFFFFF)
         {
+            _subscriber = subscriber;
             _topic = topic;
             _buffer = ArrayPool<byte>.Shared.Rent(DefaultBufferSize);
 
@@ -119,6 +121,7 @@ namespace Int2Dds.Core
         internal DataReader(Subscriber subscriber, Topic<T> topic, string qosPath,
             IDataReaderListener? listener = null, uint statusMask = 0xFFFFFFFF)
         {
+            _subscriber = subscriber;
             _topic = topic;
             _buffer = ArrayPool<byte>.Shared.Rent(DefaultBufferSize);
 
@@ -1255,6 +1258,7 @@ namespace Int2Dds.Core
                 _listenerContextHandle = IntPtr.Zero;
             }
 
+            _subscriber.UnregisterReader(this);
             NativeMethods.int2dds_delete_datareader(_handle);
             ArrayPool<byte>.Shared.Return(_buffer);
         }

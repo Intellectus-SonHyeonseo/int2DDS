@@ -869,6 +869,16 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_datareader_qos_get_user_data = dc("int2dds_datareader_qos_get_user_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_datareader_qos_get_user_data(long qos, long buf, long capacity, long size_out) {
+        try {
+            return (int) MH_int2dds_datareader_qos_get_user_data.invokeExact(qos, buf, capacity, size_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_datareader_qos_get_user_data", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_datareader_qos_set_data_representation = dc("int2dds_datareader_qos_set_data_representation", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_INT));
 
     static int int2dds_datareader_qos_set_data_representation(long qos, int kind) {
@@ -1711,6 +1721,16 @@ public final class Ffi {
             return (int) MH_int2dds_datawriter_qos_get_transport_priority.invokeExact(qos, value_out);
         } catch (Throwable __ffi_thrown) {
             throw new AssertionError("FFM downcall failed: int2dds_datawriter_qos_get_transport_priority", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_datawriter_qos_get_user_data = dc("int2dds_datawriter_qos_get_user_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_datawriter_qos_get_user_data(long qos, long buf, long capacity, long size_out) {
+        try {
+            return (int) MH_int2dds_datawriter_qos_get_user_data.invokeExact(qos, buf, capacity, size_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_datawriter_qos_get_user_data", __ffi_thrown);
         }
     }
 
@@ -3751,6 +3771,16 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_participant_qos_get_user_data = dc("int2dds_participant_qos_get_user_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_participant_qos_get_user_data(long qos, long buf, long capacity, long size_out) {
+        try {
+            return (int) MH_int2dds_participant_qos_get_user_data.invokeExact(qos, buf, capacity, size_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_participant_qos_get_user_data", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_participant_qos_remove_property = dc("int2dds_participant_qos_remove_property", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS));
 
     static int int2dds_participant_qos_remove_property(long qos, byte[] name) {
@@ -3891,6 +3921,16 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_publication_builtin_topic_data_get_group_data = dc("int2dds_publication_builtin_topic_data_get_group_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_publication_builtin_topic_data_get_group_data(long data, long buf, long capacity, long size_out) {
+        try {
+            return (int) MH_int2dds_publication_builtin_topic_data_get_group_data.invokeExact(data, buf, capacity, size_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_publication_builtin_topic_data_get_group_data", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_publication_builtin_topic_data_get_key = dc("int2dds_publication_builtin_topic_data_get_key", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS));
 
     static int int2dds_publication_builtin_topic_data_get_key(long data, byte[] key_out) {
@@ -3947,6 +3987,16 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_publication_builtin_topic_data_get_presentation = dc("int2dds_publication_builtin_topic_data_get_presentation", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_publication_builtin_topic_data_get_presentation(long data, long access_scope_out, long coherent_access_out, long ordered_access_out) {
+        try {
+            return (int) MH_int2dds_publication_builtin_topic_data_get_presentation.invokeExact(data, access_scope_out, coherent_access_out, ordered_access_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_publication_builtin_topic_data_get_presentation", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_publication_builtin_topic_data_get_reliability_kind = dc("int2dds_publication_builtin_topic_data_get_reliability_kind", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG));
 
     static int int2dds_publication_builtin_topic_data_get_reliability_kind(long data, long kind_out) {
@@ -3954,6 +4004,16 @@ public final class Ffi {
             return (int) MH_int2dds_publication_builtin_topic_data_get_reliability_kind.invokeExact(data, kind_out);
         } catch (Throwable __ffi_thrown) {
             throw new AssertionError("FFM downcall failed: int2dds_publication_builtin_topic_data_get_reliability_kind", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_publication_builtin_topic_data_get_topic_data = dc("int2dds_publication_builtin_topic_data_get_topic_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_publication_builtin_topic_data_get_topic_data(long data, long buf, long capacity, long size_out) {
+        try {
+            return (int) MH_int2dds_publication_builtin_topic_data_get_topic_data.invokeExact(data, buf, capacity, size_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_publication_builtin_topic_data_get_topic_data", __ffi_thrown);
         }
     }
 
@@ -4050,6 +4110,16 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_publisher_begin_coherent_changes = dc("int2dds_publisher_begin_coherent_changes", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
+
+    static int int2dds_publisher_begin_coherent_changes(long publisher) {
+        try {
+            return (int) MH_int2dds_publisher_begin_coherent_changes.invokeExact(publisher);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_publisher_begin_coherent_changes", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_publisher_delete_contained_entities = dc("int2dds_publisher_delete_contained_entities", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
 
     static int int2dds_publisher_delete_contained_entities(long publisher) {
@@ -4057,6 +4127,16 @@ public final class Ffi {
             return (int) MH_int2dds_publisher_delete_contained_entities.invokeExact(publisher);
         } catch (Throwable __ffi_thrown) {
             throw new AssertionError("FFM downcall failed: int2dds_publisher_delete_contained_entities", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_publisher_end_coherent_changes = dc("int2dds_publisher_end_coherent_changes", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
+
+    static int int2dds_publisher_end_coherent_changes(long publisher) {
+        try {
+            return (int) MH_int2dds_publisher_end_coherent_changes.invokeExact(publisher);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_publisher_end_coherent_changes", __ffi_thrown);
         }
     }
 
@@ -4123,6 +4203,36 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_publisher_qos_get_group_data = dc("int2dds_publisher_qos_get_group_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_publisher_qos_get_group_data(long qos, long buf, long capacity, long size_out) {
+        try {
+            return (int) MH_int2dds_publisher_qos_get_group_data.invokeExact(qos, buf, capacity, size_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_publisher_qos_get_group_data", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_publisher_qos_get_presentation = dc("int2dds_publisher_qos_get_presentation", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_publisher_qos_get_presentation(long qos, long access_scope_out, long coherent_access_out, long ordered_access_out) {
+        try {
+            return (int) MH_int2dds_publisher_qos_get_presentation.invokeExact(qos, access_scope_out, coherent_access_out, ordered_access_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_publisher_qos_get_presentation", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_publisher_qos_set_group_data = dc("int2dds_publisher_qos_set_group_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_publisher_qos_set_group_data(long qos, long data, long data_len) {
+        try {
+            return (int) MH_int2dds_publisher_qos_set_group_data.invokeExact(qos, data, data_len);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_publisher_qos_set_group_data", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_publisher_qos_set_partition = dc("int2dds_publisher_qos_set_partition", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG));
 
     static int int2dds_publisher_qos_set_partition(long qos, byte[][] partitions, long partition_count) {
@@ -4147,6 +4257,16 @@ public final class Ffi {
             return (int) MH_int2dds_publisher_qos_set_partition.invokeExact(qos, __ffi_seg_partitions, partition_count);
         } catch (Throwable __ffi_thrown) {
             throw new AssertionError("FFM downcall failed: int2dds_publisher_qos_set_partition", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_publisher_qos_set_presentation = dc("int2dds_publisher_qos_set_presentation", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_INT, JAVA_BYTE, JAVA_BYTE));
+
+    static int int2dds_publisher_qos_set_presentation(long qos, int access_scope, boolean coherent_access, boolean ordered_access) {
+        try {
+            return (int) MH_int2dds_publisher_qos_set_presentation.invokeExact(qos, access_scope, (byte) (coherent_access ? 1 : 0), (byte) (ordered_access ? 1 : 0));
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_publisher_qos_set_presentation", __ffi_thrown);
         }
     }
 
@@ -4297,6 +4417,16 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_subscriber_begin_access = dc("int2dds_subscriber_begin_access", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
+
+    static int int2dds_subscriber_begin_access(long subscriber) {
+        try {
+            return (int) MH_int2dds_subscriber_begin_access.invokeExact(subscriber);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_subscriber_begin_access", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_subscriber_delete_contained_entities = dc("int2dds_subscriber_delete_contained_entities", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
 
     static int int2dds_subscriber_delete_contained_entities(long subscriber) {
@@ -4304,6 +4434,30 @@ public final class Ffi {
             return (int) MH_int2dds_subscriber_delete_contained_entities.invokeExact(subscriber);
         } catch (Throwable __ffi_thrown) {
             throw new AssertionError("FFM downcall failed: int2dds_subscriber_delete_contained_entities", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_subscriber_end_access = dc("int2dds_subscriber_end_access", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
+
+    static int int2dds_subscriber_end_access(long subscriber) {
+        try {
+            return (int) MH_int2dds_subscriber_end_access.invokeExact(subscriber);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_subscriber_end_access", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_subscriber_get_datareaders = dc("int2dds_subscriber_get_datareaders", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_INT, JAVA_INT, JAVA_INT, ADDRESS, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_subscriber_get_datareaders(long subscriber, int sample_state_mask, int view_state_mask, int instance_state_mask, byte[] handles_out, long capacity, long count_out) {
+        try (Arena __ffi_arena = Arena.ofConfined()) {
+            MemorySegment __ffi_seg_handles_out = (handles_out == null) ? MemorySegment.NULL : __ffi_arena.allocate(handles_out.length);
+            long __ffi_cap_handles_out = (handles_out == null) ? 0L : Math.min(capacity, (long) (handles_out.length / 16));
+            int __ffi_ret = (int) MH_int2dds_subscriber_get_datareaders.invokeExact(subscriber, sample_state_mask, view_state_mask, instance_state_mask, __ffi_seg_handles_out, __ffi_cap_handles_out, count_out);
+            if (handles_out != null) MemorySegment.copy(__ffi_seg_handles_out, JAVA_BYTE, 0, handles_out, 0, handles_out.length);
+            return __ffi_ret;
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_subscriber_get_datareaders", __ffi_thrown);
         }
     }
 
@@ -4350,6 +4504,16 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_subscriber_notify_datareaders = dc("int2dds_subscriber_notify_datareaders", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
+
+    static int int2dds_subscriber_notify_datareaders(long subscriber) {
+        try {
+            return (int) MH_int2dds_subscriber_notify_datareaders.invokeExact(subscriber);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_subscriber_notify_datareaders", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_subscriber_qos_create_default = dc("int2dds_subscriber_qos_create_default", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
 
     static int int2dds_subscriber_qos_create_default(long qos_out) {
@@ -4367,6 +4531,36 @@ public final class Ffi {
             return (int) MH_int2dds_subscriber_qos_destroy.invokeExact(qos);
         } catch (Throwable __ffi_thrown) {
             throw new AssertionError("FFM downcall failed: int2dds_subscriber_qos_destroy", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_subscriber_qos_get_group_data = dc("int2dds_subscriber_qos_get_group_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_subscriber_qos_get_group_data(long qos, long buf, long capacity, long size_out) {
+        try {
+            return (int) MH_int2dds_subscriber_qos_get_group_data.invokeExact(qos, buf, capacity, size_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_subscriber_qos_get_group_data", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_subscriber_qos_get_presentation = dc("int2dds_subscriber_qos_get_presentation", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_subscriber_qos_get_presentation(long qos, long access_scope_out, long coherent_access_out, long ordered_access_out) {
+        try {
+            return (int) MH_int2dds_subscriber_qos_get_presentation.invokeExact(qos, access_scope_out, coherent_access_out, ordered_access_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_subscriber_qos_get_presentation", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_subscriber_qos_set_group_data = dc("int2dds_subscriber_qos_set_group_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_subscriber_qos_set_group_data(long qos, long data, long data_len) {
+        try {
+            return (int) MH_int2dds_subscriber_qos_set_group_data.invokeExact(qos, data, data_len);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_subscriber_qos_set_group_data", __ffi_thrown);
         }
     }
 
@@ -4394,6 +4588,16 @@ public final class Ffi {
             return (int) MH_int2dds_subscriber_qos_set_partition.invokeExact(qos, __ffi_seg_partitions, partition_count);
         } catch (Throwable __ffi_thrown) {
             throw new AssertionError("FFM downcall failed: int2dds_subscriber_qos_set_partition", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_subscriber_qos_set_presentation = dc("int2dds_subscriber_qos_set_presentation", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_INT, JAVA_BYTE, JAVA_BYTE));
+
+    static int int2dds_subscriber_qos_set_presentation(long qos, int access_scope, boolean coherent_access, boolean ordered_access) {
+        try {
+            return (int) MH_int2dds_subscriber_qos_set_presentation.invokeExact(qos, access_scope, (byte) (coherent_access ? 1 : 0), (byte) (ordered_access ? 1 : 0));
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_subscriber_qos_set_presentation", __ffi_thrown);
         }
     }
 
@@ -4462,6 +4666,16 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_subscription_builtin_topic_data_get_group_data = dc("int2dds_subscription_builtin_topic_data_get_group_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_subscription_builtin_topic_data_get_group_data(long data, long buf, long capacity, long size_out) {
+        try {
+            return (int) MH_int2dds_subscription_builtin_topic_data_get_group_data.invokeExact(data, buf, capacity, size_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_subscription_builtin_topic_data_get_group_data", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_subscription_builtin_topic_data_get_key = dc("int2dds_subscription_builtin_topic_data_get_key", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS));
 
     static int int2dds_subscription_builtin_topic_data_get_key(long data, byte[] key_out) {
@@ -4508,6 +4722,16 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_subscription_builtin_topic_data_get_presentation = dc("int2dds_subscription_builtin_topic_data_get_presentation", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_subscription_builtin_topic_data_get_presentation(long data, long access_scope_out, long coherent_access_out, long ordered_access_out) {
+        try {
+            return (int) MH_int2dds_subscription_builtin_topic_data_get_presentation.invokeExact(data, access_scope_out, coherent_access_out, ordered_access_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_subscription_builtin_topic_data_get_presentation", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_subscription_builtin_topic_data_get_reliability_kind = dc("int2dds_subscription_builtin_topic_data_get_reliability_kind", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG));
 
     static int int2dds_subscription_builtin_topic_data_get_reliability_kind(long data, long kind_out) {
@@ -4515,6 +4739,16 @@ public final class Ffi {
             return (int) MH_int2dds_subscription_builtin_topic_data_get_reliability_kind.invokeExact(data, kind_out);
         } catch (Throwable __ffi_thrown) {
             throw new AssertionError("FFM downcall failed: int2dds_subscription_builtin_topic_data_get_reliability_kind", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_subscription_builtin_topic_data_get_topic_data = dc("int2dds_subscription_builtin_topic_data_get_topic_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_subscription_builtin_topic_data_get_topic_data(long data, long buf, long capacity, long size_out) {
+        try {
+            return (int) MH_int2dds_subscription_builtin_topic_data_get_topic_data.invokeExact(data, buf, capacity, size_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_subscription_builtin_topic_data_get_topic_data", __ffi_thrown);
         }
     }
 
@@ -4687,6 +4921,16 @@ public final class Ffi {
         }
     }
 
+    private static final MethodHandle MH_int2dds_topic_qos_get_topic_data = dc("int2dds_topic_qos_get_topic_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_topic_qos_get_topic_data(long qos, long buf, long capacity, long size_out) {
+        try {
+            return (int) MH_int2dds_topic_qos_get_topic_data.invokeExact(qos, buf, capacity, size_out);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_topic_qos_get_topic_data", __ffi_thrown);
+        }
+    }
+
     private static final MethodHandle MH_int2dds_topic_qos_set_data_representation = dc("int2dds_topic_qos_set_data_representation", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_INT));
 
     static int int2dds_topic_qos_set_data_representation(long qos, int kind) {
@@ -4784,6 +5028,16 @@ public final class Ffi {
             return (int) MH_int2dds_topic_qos_set_resource_limits.invokeExact(qos, max_samples, max_instances, max_per_instance);
         } catch (Throwable __ffi_thrown) {
             throw new AssertionError("FFM downcall failed: int2dds_topic_qos_set_resource_limits", __ffi_thrown);
+        }
+    }
+
+    private static final MethodHandle MH_int2dds_topic_qos_set_topic_data = dc("int2dds_topic_qos_set_topic_data", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG));
+
+    static int int2dds_topic_qos_set_topic_data(long qos, long data, long data_len) {
+        try {
+            return (int) MH_int2dds_topic_qos_set_topic_data.invokeExact(qos, data, data_len);
+        } catch (Throwable __ffi_thrown) {
+            throw new AssertionError("FFM downcall failed: int2dds_topic_qos_set_topic_data", __ffi_thrown);
         }
     }
 

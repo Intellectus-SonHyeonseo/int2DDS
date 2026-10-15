@@ -204,6 +204,8 @@ ffi.cdef("""
         const Int2DdsPublisher *publisher,
         Int2DdsPublisherQos **qos_out
     );
+    Int2DdsRet int2dds_publisher_begin_coherent_changes(const Int2DdsPublisher *publisher);
+    Int2DdsRet int2dds_publisher_end_coherent_changes(const Int2DdsPublisher *publisher);
 
     /* Subscriber */
     Int2DdsRet int2dds_create_subscriber(
@@ -333,6 +335,18 @@ ffi.cdef("""
         const Int2DdsSubscriber *subscriber,
         const Int2DdsSubscriberQos *qos
     );
+    Int2DdsRet int2dds_subscriber_begin_access(const Int2DdsSubscriber *subscriber);
+    Int2DdsRet int2dds_subscriber_end_access(const Int2DdsSubscriber *subscriber);
+    Int2DdsRet int2dds_subscriber_get_datareaders(
+        const Int2DdsSubscriber *subscriber,
+        uint32_t sample_state_mask,
+        uint32_t view_state_mask,
+        uint32_t instance_state_mask,
+        uint8_t (*handles_out)[16],
+        uintptr_t capacity,
+        uintptr_t *count_out
+    );
+    Int2DdsRet int2dds_subscriber_notify_datareaders(const Int2DdsSubscriber *subscriber);
     Int2DdsRet int2dds_topic_get_qos(
         const Int2DdsTopic *topic,
         Int2DdsTopicQos **qos_out
@@ -696,6 +710,12 @@ ffi.cdef("""
         const uint8_t *data,
         size_t data_len
     );
+    Int2DdsRet int2dds_datawriter_qos_get_user_data(
+        const Int2DdsDataWriterQos *qos,
+        uint8_t *buf,
+        uintptr_t capacity,
+        uintptr_t *size_out
+    );
     Int2DdsRet int2dds_datawriter_qos_set_writer_data_lifecycle(
         Int2DdsDataWriterQos *qos,
         bool autodispose_unregistered_instances
@@ -764,6 +784,12 @@ ffi.cdef("""
         Int2DdsDataReaderQos *qos,
         const uint8_t *data,
         size_t data_len
+    );
+    Int2DdsRet int2dds_datareader_qos_get_user_data(
+        const Int2DdsDataReaderQos *qos,
+        uint8_t *buf,
+        uintptr_t capacity,
+        uintptr_t *size_out
     );
     Int2DdsRet int2dds_datareader_qos_set_reader_data_lifecycle(
         Int2DdsDataReaderQos *qos,
@@ -836,6 +862,17 @@ ffi.cdef("""
         Int2DdsTopicQos *qos,
         int32_t kind
     );
+    Int2DdsRet int2dds_topic_qos_set_topic_data(
+        Int2DdsTopicQos *qos,
+        const uint8_t *data,
+        uintptr_t data_len
+    );
+    Int2DdsRet int2dds_topic_qos_get_topic_data(
+        const Int2DdsTopicQos *qos,
+        uint8_t *buf,
+        uintptr_t capacity,
+        uintptr_t *size_out
+    );
     Int2DdsRet int2dds_topic_qos_destroy(Int2DdsTopicQos *qos);
 
     /* Publisher QoS */
@@ -844,6 +881,29 @@ ffi.cdef("""
         Int2DdsPublisherQos *qos,
         const char *const *partitions,
         size_t partition_count
+    );
+    Int2DdsRet int2dds_publisher_qos_set_presentation(
+        Int2DdsPublisherQos *qos,
+        int32_t access_scope,
+        bool coherent_access,
+        bool ordered_access
+    );
+    Int2DdsRet int2dds_publisher_qos_get_presentation(
+        const Int2DdsPublisherQos *qos,
+        int32_t *access_scope_out,
+        bool *coherent_access_out,
+        bool *ordered_access_out
+    );
+    Int2DdsRet int2dds_publisher_qos_set_group_data(
+        Int2DdsPublisherQos *qos,
+        const uint8_t *data,
+        uintptr_t data_len
+    );
+    Int2DdsRet int2dds_publisher_qos_get_group_data(
+        const Int2DdsPublisherQos *qos,
+        uint8_t *buf,
+        uintptr_t capacity,
+        uintptr_t *size_out
     );
     Int2DdsRet int2dds_publisher_qos_destroy(Int2DdsPublisherQos *qos);
 
@@ -854,6 +914,29 @@ ffi.cdef("""
         const char *const *partitions,
         size_t partition_count
     );
+    Int2DdsRet int2dds_subscriber_qos_set_presentation(
+        Int2DdsSubscriberQos *qos,
+        int32_t access_scope,
+        bool coherent_access,
+        bool ordered_access
+    );
+    Int2DdsRet int2dds_subscriber_qos_get_presentation(
+        const Int2DdsSubscriberQos *qos,
+        int32_t *access_scope_out,
+        bool *coherent_access_out,
+        bool *ordered_access_out
+    );
+    Int2DdsRet int2dds_subscriber_qos_set_group_data(
+        Int2DdsSubscriberQos *qos,
+        const uint8_t *data,
+        uintptr_t data_len
+    );
+    Int2DdsRet int2dds_subscriber_qos_get_group_data(
+        const Int2DdsSubscriberQos *qos,
+        uint8_t *buf,
+        uintptr_t capacity,
+        uintptr_t *size_out
+    );
     Int2DdsRet int2dds_subscriber_qos_destroy(Int2DdsSubscriberQos *qos);
 
     /* Participant QoS */
@@ -862,6 +945,12 @@ ffi.cdef("""
         Int2DdsParticipantQos *qos,
         const uint8_t *data,
         size_t data_len
+    );
+    Int2DdsRet int2dds_participant_qos_get_user_data(
+        const Int2DdsParticipantQos *qos,
+        uint8_t *buf,
+        uintptr_t capacity,
+        uintptr_t *size_out
     );
     Int2DdsRet int2dds_participant_qos_add_property(
         Int2DdsParticipantQos *qos,
@@ -1285,6 +1374,9 @@ ffi.cdef("""
     Int2DdsRet int2dds_publication_builtin_topic_data_get_deadline(const Int2DdsPublicationBuiltinTopicData *data, int32_t *sec_out, uint32_t *nanosec_out);
     Int2DdsRet int2dds_publication_builtin_topic_data_get_lifespan(const Int2DdsPublicationBuiltinTopicData *data, int32_t *sec_out, uint32_t *nanosec_out);
     Int2DdsRet int2dds_publication_builtin_topic_data_get_user_data(const Int2DdsPublicationBuiltinTopicData *data, uint8_t *buf, uintptr_t capacity, uintptr_t *size_out);
+    Int2DdsRet int2dds_publication_builtin_topic_data_get_presentation(const Int2DdsPublicationBuiltinTopicData *data, int32_t *access_scope_out, bool *coherent_access_out, bool *ordered_access_out);
+    Int2DdsRet int2dds_publication_builtin_topic_data_get_topic_data(const Int2DdsPublicationBuiltinTopicData *data, uint8_t *buf, uintptr_t capacity, uintptr_t *size_out);
+    Int2DdsRet int2dds_publication_builtin_topic_data_get_group_data(const Int2DdsPublicationBuiltinTopicData *data, uint8_t *buf, uintptr_t capacity, uintptr_t *size_out);
     Int2DdsRet int2dds_publication_builtin_topic_data_destroy(Int2DdsPublicationBuiltinTopicData *data);
 
     Int2DdsRet int2dds_subscription_builtin_topic_data_get_key(const Int2DdsSubscriptionBuiltinTopicData *data, uint8_t (*key_out)[12]);
@@ -1298,6 +1390,9 @@ ffi.cdef("""
     Int2DdsRet int2dds_subscription_builtin_topic_data_get_liveliness_lease_duration(const Int2DdsSubscriptionBuiltinTopicData *data, int32_t *sec_out, uint32_t *nanosec_out);
     Int2DdsRet int2dds_subscription_builtin_topic_data_get_deadline(const Int2DdsSubscriptionBuiltinTopicData *data, int32_t *sec_out, uint32_t *nanosec_out);
     Int2DdsRet int2dds_subscription_builtin_topic_data_get_user_data(const Int2DdsSubscriptionBuiltinTopicData *data, uint8_t *buf, uintptr_t capacity, uintptr_t *size_out);
+    Int2DdsRet int2dds_subscription_builtin_topic_data_get_presentation(const Int2DdsSubscriptionBuiltinTopicData *data, int32_t *access_scope_out, bool *coherent_access_out, bool *ordered_access_out);
+    Int2DdsRet int2dds_subscription_builtin_topic_data_get_topic_data(const Int2DdsSubscriptionBuiltinTopicData *data, uint8_t *buf, uintptr_t capacity, uintptr_t *size_out);
+    Int2DdsRet int2dds_subscription_builtin_topic_data_get_group_data(const Int2DdsSubscriptionBuiltinTopicData *data, uint8_t *buf, uintptr_t capacity, uintptr_t *size_out);
     Int2DdsRet int2dds_subscription_builtin_topic_data_destroy(Int2DdsSubscriptionBuiltinTopicData *data);
 
     /* TypeObject introspection */

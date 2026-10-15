@@ -1434,6 +1434,28 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1datareader_1qos_1get_1user_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    buf: jlong,
+    capacity: jlong,
+    size_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_datareader_qos_get_user_data(
+            qos as usize as *const _,
+            buf as usize as *mut _,
+            capacity as _,
+            size_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1datareader_1qos_1set_1data_1representation<
     'local,
 >(
@@ -3107,6 +3129,28 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
         int2dds_ffi::qos::int2dds_datawriter_qos_get_transport_priority(
             qos as usize as *const _,
             value_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1datawriter_1qos_1get_1user_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    buf: jlong,
+    capacity: jlong,
+    size_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_datawriter_qos_get_user_data(
+            qos as usize as *const _,
+            buf as usize as *mut _,
+            capacity as _,
+            size_out as usize as *mut _,
         )
     };
     __ret as _
@@ -6615,6 +6659,28 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1participant_1qos_1get_1user_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    buf: jlong,
+    capacity: jlong,
+    size_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_participant_qos_get_user_data(
+            qos as usize as *const _,
+            buf as usize as *mut _,
+            capacity as _,
+            size_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1participant_1qos_1remove_1property<
     'local,
 >(
@@ -6879,6 +6945,28 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publication_1builtin_1topic_1data_1get_1group_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    data: jlong,
+    buf: jlong,
+    capacity: jlong,
+    size_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::discovery::int2dds_publication_builtin_topic_data_get_group_data(
+            data as usize as *const _,
+            buf as usize as *mut _,
+            capacity as _,
+            size_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publication_1builtin_1topic_1data_1get_1key<
     'local,
 >(
@@ -6977,6 +7065,28 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publication_1builtin_1topic_1data_1get_1presentation<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    data: jlong,
+    access_scope_out: jlong,
+    coherent_access_out: jlong,
+    ordered_access_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::discovery::int2dds_publication_builtin_topic_data_get_presentation(
+            data as usize as *const _,
+            access_scope_out as usize as *mut _,
+            coherent_access_out as usize as *mut _,
+            ordered_access_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publication_1builtin_1topic_1data_1get_1reliability_1kind<
     'local,
 >(
@@ -6989,6 +7099,28 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
         int2dds_ffi::discovery::int2dds_publication_builtin_topic_data_get_reliability_kind(
             data as usize as *const _,
             kind_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publication_1builtin_1topic_1data_1get_1topic_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    data: jlong,
+    buf: jlong,
+    capacity: jlong,
+    size_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::discovery::int2dds_publication_builtin_topic_data_get_topic_data(
+            data as usize as *const _,
+            buf as usize as *mut _,
+            capacity as _,
+            size_out as usize as *mut _,
         )
     };
     __ret as _
@@ -7175,6 +7307,22 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publisher_1begin_1coherent_1changes<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    publisher: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::publisher::int2dds_publisher_begin_coherent_changes(
+            publisher as usize as *const _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publisher_1delete_1contained_1entities<
     'local,
 >(
@@ -7184,6 +7332,22 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 ) -> jint {
     let __ret = unsafe {
         int2dds_ffi::publisher::int2dds_publisher_delete_contained_entities(
+            publisher as usize as *const _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publisher_1end_1coherent_1changes<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    publisher: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::publisher::int2dds_publisher_end_coherent_changes(
             publisher as usize as *const _,
         )
     };
@@ -7291,6 +7455,70 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publisher_1qos_1get_1group_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    buf: jlong,
+    capacity: jlong,
+    size_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_publisher_qos_get_group_data(
+            qos as usize as *const _,
+            buf as usize as *mut _,
+            capacity as _,
+            size_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publisher_1qos_1get_1presentation<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    access_scope_out: jlong,
+    coherent_access_out: jlong,
+    ordered_access_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_publisher_qos_get_presentation(
+            qos as usize as *const _,
+            access_scope_out as usize as *mut _,
+            coherent_access_out as usize as *mut _,
+            ordered_access_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publisher_1qos_1set_1group_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    data: jlong,
+    data_len: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_publisher_qos_set_group_data(
+            qos as usize as *mut _,
+            data as usize as *const _,
+            data_len as _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publisher_1qos_1set_1partition<
     'local,
 >(
@@ -7306,6 +7534,28 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
             qos as usize as *mut _,
             partitions_arr.as_ptr() as _,
             partition_count as _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1publisher_1qos_1set_1presentation<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    access_scope: jint,
+    coherent_access: jboolean,
+    ordered_access: jboolean,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_publisher_qos_set_presentation(
+            qos as usize as *mut _,
+            access_scope as _,
+            coherent_access != 0,
+            ordered_access != 0,
         )
     };
     __ret as _
@@ -7540,6 +7790,20 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscriber_1begin_1access<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    subscriber: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::subscriber::int2dds_subscriber_begin_access(subscriber as usize as *const _)
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscriber_1delete_1contained_1entities<
     'local,
 >(
@@ -7552,6 +7816,52 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
             subscriber as usize as *const _,
         )
     };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscriber_1end_1access<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    subscriber: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::subscriber::int2dds_subscriber_end_access(subscriber as usize as *const _)
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscriber_1get_1datareaders<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    subscriber: jlong,
+    sample_state_mask: jint,
+    view_state_mask: jint,
+    instance_state_mask: jint,
+    handles_out: JByteArray<'local>,
+    capacity: jlong,
+    count_out: jlong,
+) -> jint {
+    let handles_out_len = env.get_array_length(&handles_out).unwrap_or(0).max(0) as usize;
+    let mut handles_out_buf = vec![0u8; handles_out_len];
+    let capacity = core::cmp::min(capacity as usize, handles_out_len / 16);
+    let __ret = unsafe {
+        int2dds_ffi::subscriber::int2dds_subscriber_get_datareaders(
+            subscriber as usize as *const _,
+            sample_state_mask as _,
+            view_state_mask as _,
+            instance_state_mask as _,
+            handles_out_buf.as_mut_ptr() as *mut [u8; 16] as _,
+            capacity as _,
+            count_out as usize as *mut _,
+        )
+    };
+    crate::generated_support::write_back(&mut env, &handles_out, &handles_out_buf);
     __ret as _
 }
 
@@ -7630,6 +7940,22 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscriber_1notify_1datareaders<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    subscriber: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::subscriber::int2dds_subscriber_notify_datareaders(
+            subscriber as usize as *const _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscriber_1qos_1create_1default<
     'local,
 >(
@@ -7656,6 +7982,70 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscriber_1qos_1get_1group_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    buf: jlong,
+    capacity: jlong,
+    size_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_subscriber_qos_get_group_data(
+            qos as usize as *const _,
+            buf as usize as *mut _,
+            capacity as _,
+            size_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscriber_1qos_1get_1presentation<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    access_scope_out: jlong,
+    coherent_access_out: jlong,
+    ordered_access_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_subscriber_qos_get_presentation(
+            qos as usize as *const _,
+            access_scope_out as usize as *mut _,
+            coherent_access_out as usize as *mut _,
+            ordered_access_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscriber_1qos_1set_1group_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    data: jlong,
+    data_len: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_subscriber_qos_set_group_data(
+            qos as usize as *mut _,
+            data as usize as *const _,
+            data_len as _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscriber_1qos_1set_1partition<
     'local,
 >(
@@ -7671,6 +8061,28 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
             qos as usize as *mut _,
             partitions_arr.as_ptr() as _,
             partition_count as _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscriber_1qos_1set_1presentation<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    access_scope: jint,
+    coherent_access: jboolean,
+    ordered_access: jboolean,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_subscriber_qos_set_presentation(
+            qos as usize as *mut _,
+            access_scope as _,
+            coherent_access != 0,
+            ordered_access != 0,
         )
     };
     __ret as _
@@ -7792,6 +8204,28 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscription_1builtin_1topic_1data_1get_1group_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    data: jlong,
+    buf: jlong,
+    capacity: jlong,
+    size_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::discovery::int2dds_subscription_builtin_topic_data_get_group_data(
+            data as usize as *const _,
+            buf as usize as *mut _,
+            capacity as _,
+            size_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscription_1builtin_1topic_1data_1get_1key<
     'local,
 >(
@@ -7866,6 +8300,28 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscription_1builtin_1topic_1data_1get_1presentation<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    data: jlong,
+    access_scope_out: jlong,
+    coherent_access_out: jlong,
+    ordered_access_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::discovery::int2dds_subscription_builtin_topic_data_get_presentation(
+            data as usize as *const _,
+            access_scope_out as usize as *mut _,
+            coherent_access_out as usize as *mut _,
+            ordered_access_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscription_1builtin_1topic_1data_1get_1reliability_1kind<
     'local,
 >(
@@ -7878,6 +8334,28 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
         int2dds_ffi::discovery::int2dds_subscription_builtin_topic_data_get_reliability_kind(
             data as usize as *const _,
             kind_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1subscription_1builtin_1topic_1data_1get_1topic_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    data: jlong,
+    buf: jlong,
+    capacity: jlong,
+    size_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::discovery::int2dds_subscription_builtin_topic_data_get_topic_data(
+            data as usize as *const _,
+            buf as usize as *mut _,
+            capacity as _,
+            size_out as usize as *mut _,
         )
     };
     __ret as _
@@ -8187,6 +8665,28 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
 }
 
 #[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1topic_1qos_1get_1topic_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    buf: jlong,
+    capacity: jlong,
+    size_out: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_topic_qos_get_topic_data(
+            qos as usize as *const _,
+            buf as usize as *mut _,
+            capacity as _,
+            size_out as usize as *mut _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
 pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1topic_1qos_1set_1data_1representation<
     'local,
 >(
@@ -8356,6 +8856,26 @@ pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1
             max_samples as _,
             max_instances as _,
             max_per_instance as _,
+        )
+    };
+    __ret as _
+}
+
+#[no_mangle]
+pub extern "system" fn Java_kr_co_intellectus_int2dds_internal_ffi_Ffi_int2dds_1topic_1qos_1set_1topic_1data<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    qos: jlong,
+    data: jlong,
+    data_len: jlong,
+) -> jint {
+    let __ret = unsafe {
+        int2dds_ffi::qos::int2dds_topic_qos_set_topic_data(
+            qos as usize as *mut _,
+            data as usize as *const _,
+            data_len as _,
         )
     };
     __ret as _

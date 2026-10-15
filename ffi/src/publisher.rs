@@ -205,6 +205,41 @@ pub unsafe extern "C" fn int2dds_datawriter_get_instance_handle(
     INT2DDS_RET_OK
 }
 
+/// Begin a coherent set on a Publisher.
+///
+/// Samples written by the Publisher's DataWriters until the matching
+/// `int2dds_publisher_end_coherent_changes` form one coherent set. Calls may be nested.
+///
+/// # Safety
+/// - `publisher` must be a valid publisher
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_publisher_begin_coherent_changes(
+    publisher: *const Int2DdsPublisher,
+) -> Int2DdsRet {
+    check_null!(publisher);
+
+    ffi_try!((*publisher).inner.begin_coherent_changes());
+
+    INT2DDS_RET_OK
+}
+
+/// End the coherent set started by `int2dds_publisher_begin_coherent_changes`.
+///
+/// Returns PRECONDITION_NOT_MET without a matching begin call.
+///
+/// # Safety
+/// - `publisher` must be a valid publisher
+#[no_mangle]
+pub unsafe extern "C" fn int2dds_publisher_end_coherent_changes(
+    publisher: *const Int2DdsPublisher,
+) -> Int2DdsRet {
+    check_null!(publisher);
+
+    ffi_try!((*publisher).inner.end_coherent_changes());
+
+    INT2DDS_RET_OK
+}
+
 /// Set QoS on a DataWriter
 ///
 /// Applies new QoS policies to an existing DataWriter. Some policies can only
