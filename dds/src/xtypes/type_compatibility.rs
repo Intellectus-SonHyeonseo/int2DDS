@@ -211,12 +211,19 @@ fn cross_ek_via_complete(
 struct CompatCtx<'a> {
     resolver: &'a dyn TypeResolver,
     tce: &'a TypeConsistencyEnforcementQosPolicy,
+    /// Table 19 key member rules; off in `INT2DDS_XTYPES_RTI_KEY_COMPAT` mode.
+    key_rules: bool,
     visited: std::cell::RefCell<std::collections::HashSet<(EquivalenceHash, EquivalenceHash)>>,
 }
 
 impl<'a> CompatCtx<'a> {
     fn new(resolver: &'a dyn TypeResolver, tce: &'a TypeConsistencyEnforcementQosPolicy) -> Self {
-        Self { resolver, tce, visited: std::cell::RefCell::new(std::collections::HashSet::new()) }
+        Self {
+            resolver,
+            tce,
+            key_rules: !crate::common::env::get_xtypes_rti_key_compat(),
+            visited: std::cell::RefCell::new(std::collections::HashSet::new()),
+        }
     }
 
     fn enter(&self, pair: (EquivalenceHash, EquivalenceHash)) -> bool {
@@ -907,7 +914,11 @@ fn assignable_structs(
         match writer_by_id.get(&m1.id) {
             Some(m2) => {
                 common += 1;
-                match assignable_ids(&m2.ty, &m1.ty, &m1.name, ctx) {
+                let mut result = assignable_ids(&m2.ty, &m1.ty, &m1.name, ctx);
+                if ctx.key_rules && (m1.flags.is_key() || m2.flags.is_key()) {
+                    result = combine(result, || assignable_key(&m2.ty, &m1.ty, &m1.name, ctx, 0));
+                }
+                match result {
                     TypeCompatibility::Compatible => {}
                     TypeCompatibility::Incompatible(e) => {
                         return TypeCompatibility::Incompatible(e)
@@ -1106,6 +1117,155 @@ fn assignable_enums(writer: &[Literal], reader: &[Literal]) -> TypeCompatibility
         }
     }
     TypeCompatibility::Compatible
+}
+
+/// Table 19 key member rules (writer key m2 → reader key m1), on top of plain assignability:
+/// the writer key must map onto the reader key without aliasing or loss. Bounds are
+/// checked even when the ignore_*_bounds flags are set.
+fn assignable_key(
+    writer: &TypeIdentifier,
+    reader: &TypeIdentifier,
+    member: &str,
+    ctx: &CompatCtx,
+    depth: usize,
+) -> TypeCompatibility {
+    if depth > 32 {
+        return TypeCompatibility::Indeterminate;
+    }
+    let (w, r) = match (node_from_id(writer, None, ctx), node_from_id(reader, None, ctx)) {
+        (Node::Unresolved, _) | (_, Node::Unresolved) => return TypeCompatibility::Indeterminate,
+        (Node::Plain(w), Node::Plain(r)) => return key_bounds(&w, &r, member),
+        (Node::Object(w), Node::Object(r)) => (w, r),
+        _ => return TypeCompatibility::Compatible,
+    };
+    let (w, r) = match (view_of(&w, ctx), view_of(&r, ctx)) {
+        (Ok(w), Ok(r)) => (w, r),
+        (Err(e), _) | (_, Err(e)) => return e,
+    };
+    match (w, r) {
+        (View::Enum(w), View::Enum(r)) => {
+            if w.iter().all(|l2| r.iter().any(|l1| l1.value == l2.value)) {
+                TypeCompatibility::Compatible
+            } else {
+                key_mismatch(member)
+            }
+        }
+        (View::Struct(w), View::Struct(r)) => key_holder_members(&w, &r, member, ctx, depth),
+        (View::Union(w), View::Union(r)) => key_union_labels(&w, &r, member, ctx, depth),
+        _ => TypeCompatibility::Compatible,
+    }
+}
+
+fn key_mismatch(member: &str) -> TypeCompatibility {
+    TypeCompatibility::Incompatible(TypeCompatibilityError::KeyMemberMismatch {
+        member_name: member.to_string(),
+    })
+}
+
+/// String, sequence and map key members: L1 >= L2.
+fn key_bounds(writer: &TypeIdentifier, reader: &TypeIdentifier, member: &str) -> TypeCompatibility {
+    if writer.is_string() && reader.is_string() {
+        let (w, r) = (get_string_bound(writer), get_string_bound(reader));
+        if !bound_fits(w, r) {
+            return TypeCompatibility::Incompatible(TypeCompatibilityError::StringBoundExceeded {
+                member_name: member.to_string(),
+                writer_bound: w,
+                reader_bound: r,
+            });
+        }
+        return TypeCompatibility::Compatible;
+    }
+    let bounds = match (sequence_info(writer), sequence_info(reader)) {
+        (Some((_, w)), Some((_, r))) => Some((w, r)),
+        _ => match (map_info(writer), map_info(reader)) {
+            (Some((_, _, w)), Some((_, _, r))) => Some((w, r)),
+            _ => None,
+        },
+    };
+    match bounds {
+        Some((w, r)) if !bound_fits(w, r) => {
+            TypeCompatibility::Incompatible(TypeCompatibilityError::SequenceBoundExceeded {
+                member_name: member.to_string(),
+                writer_bound: w,
+                reader_bound: r,
+            })
+        }
+        _ => TypeCompatibility::Compatible,
+    }
+}
+
+/// KeyHolder(T1) is-assignable-from KeyHolder(T2) for structs: the key members, or every
+/// member when there is none, appear on both sides and follow the key rules.
+fn key_holder_members(
+    writer: &Aggregate,
+    reader: &Aggregate,
+    member: &str,
+    ctx: &CompatCtx,
+    depth: usize,
+) -> TypeCompatibility {
+    let holder = |a: &Aggregate| -> Vec<(u32, TypeIdentifier, String)> {
+        let any_key = a.members.iter().any(|m| m.flags.is_key());
+        a.members
+            .iter()
+            .filter(|m| !any_key || m.flags.is_key())
+            .map(|m| (m.id, m.ty.clone(), m.name.clone()))
+            .collect()
+    };
+    let (w_keys, r_keys) = (holder(writer), holder(reader));
+    if r_keys.iter().any(|(id, ..)| !w_keys.iter().any(|(w_id, ..)| w_id == id)) {
+        return key_mismatch(member);
+    }
+    let mut result = TypeCompatibility::Compatible;
+    for (id, w_ty, _) in &w_keys {
+        let Some((_, r_ty, r_name)) = r_keys.iter().find(|(r_id, ..)| r_id == id) else {
+            return key_mismatch(member);
+        };
+        result = combine(result, || assignable_key(w_ty, r_ty, r_name, ctx, depth + 1));
+        if matches!(result, TypeCompatibility::Incompatible(_)) {
+            return result;
+        }
+    }
+    result
+}
+
+/// Union key members: every discriminator value that selects a writer member m22 selects a
+/// reader member m11 whose key accepts m22's.
+fn key_union_labels(
+    writer: &Aggregate,
+    reader: &Aggregate,
+    member: &str,
+    ctx: &CompatCtx,
+    depth: usize,
+) -> TypeCompatibility {
+    let r_default = reader.members.iter().find(|m| m.flags.is_default());
+    let w_labels: Vec<i32> = writer.members.iter().flat_map(|m| m.labels.iter().copied()).collect();
+    let mut result = TypeCompatibility::Compatible;
+    for m22 in &writer.members {
+        let mut targets = Vec::new();
+        for label in &m22.labels {
+            match reader.members.iter().find(|m| m.labels.contains(label)).or(r_default) {
+                Some(m11) => targets.push(m11),
+                None => return key_mismatch(member),
+            }
+        }
+        // The writer default selects every value outside the writer labels; only a reader
+        // default is guaranteed to select all of them.
+        if m22.flags.is_default() {
+            let Some(rd) = r_default else { return key_mismatch(member) };
+            targets.push(rd);
+            targets.extend(reader.members.iter().filter(|m| {
+                !m.flags.is_default() && m.labels.iter().any(|l| !w_labels.contains(l))
+            }));
+        }
+        for m11 in targets {
+            result =
+                combine(result, || assignable_key(&m22.ty, &m11.ty, &m11.name, ctx, depth + 1));
+            if matches!(result, TypeCompatibility::Incompatible(_)) {
+                return result;
+            }
+        }
+    }
+    result
 }
 
 /// Project a `MinimalStructType` by retaining only members whose flags lack the `@key` bit.

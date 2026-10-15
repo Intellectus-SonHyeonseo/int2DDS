@@ -22,6 +22,10 @@ runs:
   using: 'composite'
   steps:
     - name: Run XTypes Interoperability test for ${{ inputs.dds-name }} (${{ inputs.role }})
+      # The suite expects the Connext key matching (struct_key_enum_2, struct_key_string_3,
+      # struct_key_union_2 match), which skips the XTypes Table 19 key rules.
+      env:
+        INT2DDS_XTYPES_RTI_KEY_COMPAT: 'true'
       run: |
         source .venv/bin/activate
 
