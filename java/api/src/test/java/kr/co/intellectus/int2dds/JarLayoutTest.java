@@ -177,12 +177,29 @@ class JarLayoutTest {
                         c.getSimpleName() + " override is missing base members: " + base);
             }
 
-            // FFM-only helper with no base counterpart: the listener upcalls.
-            String listeners =
-                    "META-INF/versions/22/"
-                            + Ffi.class.getPackage().getName().replace('.', '/')
-                            + "/FfmListeners.class";
-            assertNotNull(jar.getJarEntry(listeners), listeners + " must be present");
+            // `jar --validate` (and tools that apply the same Multi-Release rule) rejects a
+            // versioned class whose public API differs from its base in either direction --
+            // an added public method, or a modifier such as `native` that only one side has.
+            for (Class<?> c : overridden) {
+                String basePath = c.getName().replace('.', '/') + ".class";
+                assertEquals(
+                        publicApi(jar, basePath),
+                        publicApi(jar, "META-INF/versions/22/" + basePath),
+                        c.getSimpleName() + " override must keep the base public API exactly");
+            }
+
+            // FFM-only helpers with no base counterpart: the listener upcalls and the
+            // hand-over of the library NativeLoader opened. Package-private, as a versioned
+            // directory may not add public classes either.
+            for (String helper : new String[] {"FfmListeners", "FfmLibrary"}) {
+                String path =
+                        "META-INF/versions/22/"
+                                + Ffi.class.getPackage().getName().replace('.', '/')
+                                + "/"
+                                + helper
+                                + ".class";
+                assertNotNull(jar.getJarEntry(path), path + " must be present");
+            }
         }
     }
 
@@ -191,6 +208,16 @@ class JarLayoutTest {
      * from the class file: reflection cannot see a versioned entry the running JDK did not select.
      */
     private static java.util.Set<String> nonPrivateMethods(JarFile jar, String path)
+            throws Exception {
+        return methods(jar, path, false);
+    }
+
+    /** {@code access-flags name + descriptor} of every public or protected method. */
+    private static java.util.Set<String> publicApi(JarFile jar, String path) throws Exception {
+        return methods(jar, path, true);
+    }
+
+    private static java.util.Set<String> methods(JarFile jar, String path, boolean publicApi)
             throws Exception {
         try (DataInputStream d = new DataInputStream(jar.getInputStream(jar.getJarEntry(path)))) {
             d.readInt(); // magic
@@ -246,7 +273,12 @@ class JarLayoutTest {
                 skipAttributes(d);
                 boolean isPrivate = (access & 0x0002) != 0;
                 boolean isSynthetic = (access & 0x1000) != 0;
-                if (!isPrivate && !isSynthetic && !name.equals("<clinit>")) {
+                boolean isPublicApi = (access & (0x0001 | 0x0004)) != 0; // public, protected
+                if (publicApi) {
+                    if (isPublicApi && !isSynthetic) {
+                        out.add(Integer.toHexString(access) + " " + name + descriptor);
+                    }
+                } else if (!isPrivate && !isSynthetic && !name.equals("<clinit>")) {
                     out.add(name + descriptor);
                 }
             }

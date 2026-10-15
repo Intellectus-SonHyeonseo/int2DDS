@@ -156,7 +156,7 @@ public final class FfiHandwritten {
         static final MethodHandle GET_WITH_PREFIX =
                 Linker.nativeLinker()
                         .downcallHandle(
-                                NativeLoader.symbolLookup()
+                                FfmLibrary.LOOKUP
                                         .find("int2dds_participant_qos_get_properties_with_prefix")
                                         .orElseThrow(
                                                 () ->

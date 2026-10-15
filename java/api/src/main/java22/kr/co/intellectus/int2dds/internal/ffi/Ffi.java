@@ -3,7 +3,6 @@
 // DO NOT EDIT — regenerate instead. CI fails on drift.
 package kr.co.intellectus.int2dds.internal.ffi;
 
-import kr.co.intellectus.int2dds.internal.NativeLoader;
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import static java.lang.foreign.ValueLayout.*;
@@ -19,11 +18,11 @@ import static java.lang.foreign.ValueLayout.*;
 public final class Ffi {
     private Ffi() {}
 
-    // NativeLoader.symbolLookup() opens int2dds_ffi through FFM (and
-    // version-checks it) on first use. Every handle below resolves
+    // FfmLibrary hands over the int2dds_ffi that NativeLoader opened through
+    // FFM (and version-checked) on first use. Every handle below resolves
     // against that lookup, never against the class loader's JNI libraries.
     private static final Linker LINKER = Linker.nativeLinker();
-    private static final SymbolLookup LOOKUP = NativeLoader.symbolLookup();
+    private static final SymbolLookup LOOKUP = FfmLibrary.LOOKUP;
 
     private static MethodHandle dc(String name, FunctionDescriptor d) {
         return LINKER.downcallHandle(LOOKUP.find(name).orElseThrow(

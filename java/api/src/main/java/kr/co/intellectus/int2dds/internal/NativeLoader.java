@@ -39,7 +39,19 @@ public final class NativeLoader {
                 return;
             }
             doLoad();
-            nativeVersion = new String(FfiHandwritten.nativeVersion(), UTF8);
+            byte[] version;
+            try {
+                version = FfiHandwritten.nativeVersion();
+            } catch (UnsatisfiedLinkError e) {
+                // A library built from an older tree can carry the same version number but
+                // lack the entry point this JAR calls; say so instead of a bare link error.
+                throw new NativeLoadException(
+                        "int2dds_java does not match this JAR: it lacks the version entry point,"
+                                + " so it was built from an older source tree. Rebuild it with"
+                                + " 'cargo build --release -p int2dds-java'.",
+                        e);
+            }
+            nativeVersion = new String(version, UTF8);
             verifyVersion(jarVersion(), nativeVersion);
             loaded = true;
         }

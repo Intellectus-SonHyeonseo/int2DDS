@@ -64,9 +64,13 @@ public final class NativeLoader {
 
     /**
      * Symbols of the loaded {@code int2dds_ffi}, loading and verifying it on first use. The FFM
-     * {@code Ffi} and {@code FfiHandwritten} bind every downcall against this lookup.
+     * {@code Ffi} and {@code FfiHandwritten} bind every downcall against this lookup, reaching it
+     * through {@code internal.ffi.FfmLibrary}.
+     *
+     * <p>Package-private on purpose: a class under {@code META-INF/versions/22} must keep the
+     * public API of its base version, which has no such method ({@code jar --validate}).
      */
-    public static SymbolLookup symbolLookup() {
+    static SymbolLookup symbolLookup() {
         synchronized (LOCK) {
             if (lookup == null) {
                 SymbolLookup opened = doLoad();

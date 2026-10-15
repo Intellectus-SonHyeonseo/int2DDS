@@ -64,8 +64,15 @@ public final class FfiHandwritten {
      *
      * <p>Public because {@code NativeLoader} lives in the parent package and needs it to verify the
      * library against the JAR. Everything else here stays package-private.
+     *
+     * <p>Not itself {@code native}: the JDK 22+ class in the Multi-Release JAR implements it in
+     * Java, and a versioned class must keep the same public API, modifiers included.
      */
-    public static native byte[] nativeVersion();
+    public static byte[] nativeVersion() {
+        return readNativeVersion();
+    }
+
+    private static native byte[] readNativeVersion();
 
     /**
      * Wraps the {@code cap}-byte region at native address {@code addr} as a direct {@link
