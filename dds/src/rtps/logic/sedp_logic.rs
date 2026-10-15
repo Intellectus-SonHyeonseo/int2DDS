@@ -146,6 +146,8 @@ pub(crate) struct SedpLogic {
     /// (writer, reader) pairs already reported as type-inconsistent; re-matching must not
     /// count them again.
     reported_type_rejections: Arc<Mutex<HashSet<(Guid, Guid)>>>,
+    /// (remote endpoint, topic name) already counted in the local Topic's INCONSISTENT_TOPIC.
+    reported_inconsistent_topics: Arc<Mutex<HashSet<(Guid, String)>>>,
     /// Heartbeats sent per (remote, builtin writer) since it was armed.
     sedp_hb_attempts: Arc<dashmap::DashMap<(GuidPrefix, EntityId), u32>>,
 }
@@ -167,7 +169,7 @@ impl SedpLogic {
         let writer_keyed = offered.endpoint_guid().entity_kind().is_with_key();
         let reader_keyed = requested.endpoint_guid().entity_kind().is_with_key();
         if writer_keyed != reader_keyed {
-            if self.first_type_rejection(offered.endpoint_guid(), requested.endpoint_guid()) {
+            if self.first_inconsistent_topic(remote_guid, offered.topic_name()) {
                 update_inconsistent_topic(local);
             }
             debug!(
@@ -214,6 +216,8 @@ impl SedpLogic {
                 );
                 if self.first_type_rejection(offered.endpoint_guid(), requested.endpoint_guid()) {
                     update_incompatible_type(local);
+                }
+                if self.first_inconsistent_topic(remote_guid, offered.topic_name()) {
                     update_inconsistent_topic(local);
                 }
                 MatchDecision::Reject(e)
@@ -231,10 +235,22 @@ impl SedpLogic {
             .unwrap_or(true)
     }
 
+    /// True on the first inconsistency of a remote endpoint on a topic, so several local
+    /// endpoints of the same Topic count it once.
+    fn first_inconsistent_topic(&self, remote_guid: Guid, topic_name: String) -> bool {
+        self.reported_inconsistent_topics
+            .lock()
+            .map(|mut set| set.insert((remote_guid, topic_name)))
+            .unwrap_or(true)
+    }
+
     /// Drop the rejection records of an endpoint that is gone.
     pub(crate) fn forget_type_rejections(&self, endpoint_guid: Guid) {
         if let Ok(mut set) = self.reported_type_rejections.lock() {
             set.retain(|(w, r)| *w != endpoint_guid && *r != endpoint_guid);
+        }
+        if let Ok(mut set) = self.reported_inconsistent_topics.lock() {
+            set.retain(|(remote, _)| *remote != endpoint_guid);
         }
     }
 
@@ -447,6 +463,7 @@ impl SedpLogic {
             type_lookup_pending: Arc::new(Mutex::new(HashMap::new())),
             deferred_type_matches: Arc::new(Mutex::new(HashMap::new())),
             reported_type_rejections: Arc::new(Mutex::new(HashSet::new())),
+            reported_inconsistent_topics: Arc::new(Mutex::new(HashSet::new())),
             sedp_hb_attempts: Arc::new(dashmap::DashMap::new()),
         }
     }

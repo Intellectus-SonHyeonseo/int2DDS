@@ -215,6 +215,110 @@ fn different_type_names_incompatible_types_raise_inconsistent_topic_once() {
 }
 
 #[test]
+fn inconsistent_topic_counts_remote_endpoint_once_across_local_readers() {
+    let writer_support = support(BOUNDS_XML, "int32x10");
+    let reader_support = support(BOUNDS_XML, "int32x20");
+    let (pub_side, writer, sub_side, reader) = writer_reader_pair(&writer_support, &reader_support);
+    let second_reader = sub_side
+        .participant
+        .create_subscriber(SubscriberQos::default(), None, StatusMask::default())
+        .unwrap()
+        .create_datareader_dynamic(
+            &sub_side.topic,
+            reader_support.clone(),
+            DataReaderQos::default(),
+            None,
+            StatusMask::default(),
+        )
+        .unwrap();
+
+    // Both local readers must have rejected the remote writer before counting.
+    let deadline = Instant::now() + StdDuration::from_secs(10);
+    let rejected = |r: &DataReader<DynamicData>| {
+        r.get_requested_incompatible_type_status().unwrap().total_count() > 0
+    };
+    while !(rejected(&reader) && rejected(&second_reader)) {
+        assert!(Instant::now() < deadline, "both readers must reject int32[10]");
+        std::thread::sleep(StdDuration::from_millis(100));
+    }
+    assert!(wait_for_writer_status(
+        &writer,
+        StatusMask::PUBLICATION_MATCHED,
+        Duration::from_seconds(1)
+    )
+    .is_err());
+    assert_eq!(sub_side.inconsistent_count(), 1);
+    assert_eq!(sub_side.listener.calls.load(Ordering::SeqCst), 1);
+    // Two remote readers on the publisher side are two remote endpoints.
+    assert_eq!(pub_side.inconsistent_count(), 2);
+
+    pub_side.delete();
+    sub_side.delete();
+}
+
+const KEY_XML: &str = r#"<types>
+      <enum name="E1">
+        <enumerator name="VAL0"/><enumerator name="VAL1"/><enumerator name="VAL2"/>
+      </enum>
+      <enum name="E2">
+        <enumerator name="VAL0"/><enumerator name="VAL1"/><enumerator name="VAL2"/>
+        <enumerator name="VAL3"/>
+      </enum>
+      <struct name="key_enum_1">
+        <member name="x1" type="nonBasic" nonBasicTypeName="E1" key="true"/>
+      </struct>
+      <struct name="key_enum_2">
+        <member name="x1" type="nonBasic" nonBasicTypeName="E2" key="true"/>
+      </struct>
+      <struct name="key_string10">
+        <member name="x1" type="string" stringMaxLength="10" key="true"/>
+      </struct>
+      <struct name="key_string20">
+        <member name="x1" type="string" stringMaxLength="20" key="true"/>
+      </struct>
+    </types>"#;
+
+fn key_types_match(writer_type: &str, reader_type: &str) -> bool {
+    let writer_support = support(KEY_XML, writer_type);
+    let reader_support = support(KEY_XML, reader_type);
+    let (pub_side, writer, sub_side, _reader) =
+        writer_reader_pair(&writer_support, &reader_support);
+    let deadline = Instant::now() + StdDuration::from_secs(10);
+    let matched = loop {
+        if writer.get_publication_matched_status().unwrap().current_count() > 0 {
+            break true;
+        }
+        if sub_side.inconsistent_count() > 0 {
+            break false;
+        }
+        assert!(Instant::now() < deadline, "{writer_type} -> {reader_type}: no decision");
+        std::thread::sleep(StdDuration::from_millis(100));
+    };
+    pub_side.delete();
+    sub_side.delete();
+    matched
+}
+
+// One test so the env switch cannot leak into a concurrently running case.
+#[test]
+fn key_member_rules_follow_rti_key_compat_env() {
+    // XTypes 1.3 Table 19: the writer key must map onto the reader key.
+    assert!(key_types_match("key_enum_1", "key_enum_2"));
+    assert!(!key_types_match("key_enum_2", "key_enum_1"), "writer key literal VAL3 is unmapped");
+    assert!(
+        !key_types_match("key_string20", "key_string10"),
+        "key bound is checked despite ignore_string_bounds"
+    );
+
+    int2dds::common::env::set_xtypes_rti_key_compat(true);
+    let enum_match = key_types_match("key_enum_2", "key_enum_1");
+    let string_match = key_types_match("key_string20", "key_string10");
+    int2dds::common::env::set_xtypes_rti_key_compat(false);
+    assert!(enum_match, "RTI mode skips the key enum literal rule");
+    assert!(string_match, "RTI mode lets ignore_string_bounds cover key strings");
+}
+
+#[test]
 fn same_type_name_incompatible_types_raise_inconsistent_topic() {
     let writer_support = support(
         r#"<types><struct name="Sample" extensibility="final">

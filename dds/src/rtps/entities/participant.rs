@@ -1147,8 +1147,8 @@ impl Participant {
         Ok(())
     }
 
-    // Every endpoint removal path ends in the two callers above, so the once-per-pair
-    // INCONSISTENT_TOPIC record is dropped here instead of at each dispose site.
+    // Every endpoint removal path ends in the two callers above, so the once-only
+    // type-rejection records are dropped here instead of at each dispose site.
     fn forget_type_rejections(&self, endpoint_guid: Guid) {
         if let Some(sedp_logic) = self.sedp_logic.get().and_then(|logic| logic.as_ref().as_ref()) {
             sedp_logic.forget_type_rejections(endpoint_guid);
