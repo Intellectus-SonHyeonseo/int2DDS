@@ -888,6 +888,13 @@ class DataReader(Generic[T]):
         check_ret(lib.int2dds_datareader_get_guid(self._handle, ffi.cast("uint8_t(*)[16]", buf)))
         return bytes(ffi.buffer(buf, 16))
 
+    def get_instance_handle(self) -> bytes:
+        """Get this DataReader's 16-byte instance handle."""
+        buf = ffi.new("uint8_t[16]")
+        check_ret(lib.int2dds_datareader_get_instance_handle(
+            self._handle, ffi.cast("uint8_t(*)[16]", buf)))
+        return bytes(ffi.buffer(buf, 16))
+
     def has_data(self) -> bool:
         """Return whether unread samples are available in the cache."""
         out = ffi.new("bool *")

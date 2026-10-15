@@ -150,6 +150,22 @@ ffi.cdef("""
         const uint8_t (*handle)[16],
         bool *result_out
     );
+    Int2DdsRet int2dds_participant_get_instance_handle(
+        const Int2DdsParticipant *participant,
+        uint8_t (*handle_out)[16]
+    );
+    Int2DdsRet int2dds_participant_ignore_participant(
+        const Int2DdsParticipant *participant,
+        const uint8_t (*handle)[16]
+    );
+    Int2DdsRet int2dds_participant_ignore_publication(
+        const Int2DdsParticipant *participant,
+        const uint8_t (*handle)[16]
+    );
+    Int2DdsRet int2dds_participant_ignore_subscription(
+        const Int2DdsParticipant *participant,
+        const uint8_t (*handle)[16]
+    );
     Int2DdsRet int2dds_participant_find_topic(
         const Int2DdsParticipant *participant,
         const char *topic_name,
@@ -609,6 +625,14 @@ ffi.cdef("""
     Int2DdsRet int2dds_datawriter_get_guid(
         const Int2DdsDataWriter *writer,
         uint8_t (*guid_out)[16]
+    );
+    Int2DdsRet int2dds_datareader_get_instance_handle(
+        const Int2DdsDataReader *reader,
+        uint8_t (*handle_out)[16]
+    );
+    Int2DdsRet int2dds_datawriter_get_instance_handle(
+        const Int2DdsDataWriter *writer,
+        uint8_t (*handle_out)[16]
     );
     Int2DdsRet int2dds_datareader_has_data(
         const Int2DdsDataReader *reader,
