@@ -238,7 +238,7 @@ jobs:
         include:
           - { triple: x86_64-unknown-linux-musl,  dist: linux-x86_64-musl,  runner: ubuntu-latest,    image: "alpine:3.20" }
           - { triple: aarch64-unknown-linux-musl, dist: linux-aarch64-musl, runner: ubuntu-24.04-arm, image: "alpine:3.20" }
-          - { triple: armv7-unknown-linux-musleabihf, dist: linux-armhf-musl, runner: ubuntu-latest, image: "ghcr.io/cross-rs/armv7-unknown-linux-musleabihf:main" }
+          - { triple: armv7-unknown-linux-musleabihf, dist: linux-armhf-musl, runner: ubuntu-latest, image: "ghcr.io/cross-rs/armv7-unknown-linux-musleabihf@sha256:c7208b0198e43fa55f1653bf35e4496e20524e42d5ae3acf700fd8337140c13c" }
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
