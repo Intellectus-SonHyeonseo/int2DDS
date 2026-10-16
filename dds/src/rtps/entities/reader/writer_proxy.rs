@@ -335,6 +335,18 @@ impl WriterProxy {
         &self.unicast_locator_list
     }
 
+    /// Moves the cursor over every sequence number already settled -- received, or declared
+    /// irrelevant by a GAP -- and stops at the first one still owed, so it never claims a number
+    /// the writer may still send.
+    pub(crate) fn advance_expected_sn_over_settled(&mut self) {
+        while let Some(change) = self.changes_from_writer.get(&self.expected_sn) {
+            if change.status != ChangeFromWriterStatusKind::Received {
+                break;
+            }
+            self.expected_sn += 1;
+        }
+    }
+
     pub(crate) fn increment_expected_sn(&mut self) {
         self.expected_sn += 1;
     }
