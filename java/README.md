@@ -9,7 +9,23 @@ API, with one of two native backends underneath, picked by the multi-release JAR
 | JDK 22+ | FFM (Panama) downcalls and upcalls — no JNI at all | `int2dds_ffi`, the plain C ABI library the C# and Python bindings load |
 
 The public API is identical on both; only `kr.co.intellectus.int2dds.internal` classes
-differ. `FfiHandwritten.backend()` reports which one a runtime selected.
+differ. `internal.ffi.FfiHandwritten.backend()` returns `"jni"` or `"ffm"` for the backend
+a runtime selected.
+
+### JNI and FFM
+
+- **JNI** (Java Native Interface) can only call C functions written against the JNI
+  calling convention, so it needs a glue library: `int2dds_java` wraps each C ABI
+  function in a JNI export, and listener callbacks reach Java through JNI upcalls.
+  It is the only option before JDK 22.
+- **FFM** (Foreign Function & Memory API, JEP 454, final in JDK 22) calls C functions
+  directly from Java through `MethodHandle` downcalls, and turns Java listeners into
+  C function pointers with upcall stubs. No glue library is involved: the JAR loads
+  the same `int2dds_ffi` the C, C# and Python bindings use.
+
+Both sides are generated from `ffi/src` (see [Layout](#layout)), so they expose the
+same functions. Choosing between them takes no code: the JVM picks the classes for its
+own version from the JAR.
 
 ## Requirements
 
@@ -21,6 +37,27 @@ differ. `FfiHandwritten.backend()` reports which one a runtime selected.
 - The 22 source set is compiled with a JDK 24 toolchain, which Gradle downloads on the
   first build if none is installed.
 - A Rust toolchain to build the native library.
+
+## Using the release JAR
+
+Each GitHub release attaches `int2dds-api-<version>.jar`. It is not published to a
+Maven repository; add it to the class path directly, or install it into the local
+Maven repository with `./gradlew :api:publishToMavenLocal` when building from source.
+The JAR has no runtime dependencies.
+
+It bundles both native libraries for six platforms, so no environment variable is
+needed on them:
+
+| OS | Architectures |
+|---|---|
+| Windows | x86_64, aarch64 |
+| Linux (glibc) | x86_64, aarch64 |
+| macOS | x86_64, aarch64 |
+
+The other platforms the release archives cover (Linux armhf, musl, Windows i686 and
+`-gnu`) are not bundled. On JDK 22+, extract `int2dds-<version>-<dist>` and point
+`INT2DDS_FFI_PATH` at its `lib/` (or `bin/` on Windows) directory. Those archives do not
+contain `int2dds_java`, so on JDK 8 – 21 build it with `cargo` for the target.
 
 ## Building
 
