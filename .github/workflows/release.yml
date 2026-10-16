@@ -873,6 +873,10 @@ jobs:
   release:
     needs: [prepare, native-linux-gnu, native-linux-musl, native-windows, native-macos, csharp, python, java, verify-examples, verify-glibc-floor]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
 
@@ -882,6 +886,12 @@ jobs:
 
       - name: Collect assets and generate checksums
         run: ./.github/scripts/ci/collect-assets.sh "${{ needs.prepare.outputs.version }}" artifacts dist/release
+
+      - name: Attest build provenance
+        if: github.event_name == 'push'
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/release/*
 
       - name: Create draft release
         if: github.event_name == 'push'

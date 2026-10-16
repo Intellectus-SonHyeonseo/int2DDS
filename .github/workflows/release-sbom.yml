@@ -1,0 +1,88 @@
+name: Release SBOM
+run-name: "Release SBOM ${{ github.event.workflow_run.head_branch || inputs.tag }}"
+
+# Runs after Release has created the draft, so the SBOM is attached before the
+# release is published. workflow_run only fires for this file on the default branch.
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to (re)generate the SBOM for"
+        required: true
+
+concurrency:
+  group: release-sbom-${{ github.event.workflow_run.head_branch || inputs.tag }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  sbom:
+    # Release dry runs (workflow_dispatch) create no release to attach to.
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.workflow_run.head_branch || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || inputs.tag }}
+
+      - name: Resolve version
+        id: check
+        run: echo "version=$(./.github/scripts/ci/check-version.sh "$TAG")" >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets
+        run: |
+          set -euo pipefail
+          gh release download "$TAG" --dir dist/release
+          ( cd dist/release && sha256sum -c SHA256SUMS )
+
+      - name: Install cargo-cyclonedx
+        run: cargo install --locked cargo-cyclonedx@0.5.9
+
+      - uses: anchore/sbom-action/download-syft@v0
+
+      - name: Generate SBOM
+        run: bash .github/scripts/ci/generate-sbom.sh "${{ steps.check.outputs.version }}" dist/sbom
+
+      - name: Attest SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            dist/release/*.tar.gz
+            dist/release/*.zip
+            dist/release/*.nupkg
+            dist/release/*.snupkg
+            dist/release/*.whl
+            dist/release/*.jar
+          sbom-path: dist/sbom/int2dds-${{ steps.check.outputs.version }}.spdx.json
+
+      - name: Upload SBOM to the release
+        run: gh release upload "$TAG" --clobber dist/sbom/*.json
+
+      - name: Scan SBOM for vulnerabilities
+        id: scan
+        uses: anchore/scan-action@v7
+        with:
+          sbom: dist/sbom/int2dds-${{ steps.check.outputs.version }}.spdx.json
+          severity-cutoff: high
+          output-format: table
+          output-file: grype.txt
+
+      - name: Vulnerability summary
+        if: always() && steps.scan.outcome != 'skipped'
+        run: |
+          {
+            echo "### Vulnerability scan (fails on high or above)"
+            echo '```'
+            cat grype.txt 2>/dev/null || echo "no report"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
