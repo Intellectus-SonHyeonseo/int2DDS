@@ -3487,6 +3487,25 @@ mod tests {
         assert!(missing.is_empty());
     }
 
+    /// Announcement 1 is lost and 2 to 5 arrive before any heartbeat has named the range.
+    /// The first heartbeat answer must request 1.
+    #[test]
+    fn an_announcement_lost_before_the_first_heartbeat_is_requested() {
+        let (sedp_logic, participant, remote_writer_guid) = sedp_logic_with_matched_writer();
+        let reader = participant.sedp_builtin_publications_reader();
+        for sn in [2, 3, 4, 5] {
+            sedp_logic
+                .mark_as_received_in_writer_proxy(
+                    &reader,
+                    remote_writer_guid,
+                    SequenceNumber::from_i64(sn),
+                )
+                .expect("mark received");
+        }
+        let (_, missing) = proxy_heartbeat(&participant, remote_writer_guid, 1, 5);
+        assert_eq!(missing, vec![SequenceNumber::from_i64(1)]);
+    }
+
     /// A truncated payload reaches the handler fully defaulted, and storing it files a phantom
     /// under the empty topic name. It is still marked received, and the datagram carries on.
     #[test]
