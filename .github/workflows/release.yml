@@ -880,6 +880,8 @@ jobs:
         run: cargo install --locked cargo-cyclonedx@0.5.9
 
       - uses: anchore/sbom-action/download-syft@v0
+        with:
+          syft-version: v1.42.3
 
       - name: Generate SBOM
         run: bash .github/scripts/ci/generate-sbom.sh "${{ needs.prepare.outputs.version }}" dist/sbom
