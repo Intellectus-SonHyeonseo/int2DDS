@@ -23,7 +23,7 @@ cargo cyclonedx --format json --spec-version 1.5 --target all
 syft scan dir:. --quiet \
   --source-name int2dds --source-version "$version" \
   --select-catalogers "+sbom-cataloger,-rust-cargo-lock-cataloger,-github-actions-usage-cataloger,-github-action-workflow-usage-cataloger" \
-  --exclude './java/gradle/**' \
+  --exclude './java/gradle/**' --exclude './dist/**' \
   -o "spdx-json=$tmp/spdx.json" -o "cyclonedx-json=$tmp/cdx.json"
 find . -name '*.cdx.json' -not -path './target/*' -delete
 mkdir -p "$out_dir"
